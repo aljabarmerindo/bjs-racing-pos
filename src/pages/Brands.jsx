@@ -64,10 +64,38 @@ function Brands() {
         return;
       }
     } else {
+      const newSortOrder = Number(brandData.sort_order) || 0;
+
+      if (newSortOrder >= 1) {
+        const { data: affectedBrands, error: fetchError } = await supabase
+          .from("brands")
+          .select("id, sort_order")
+          .gte("sort_order", newSortOrder);
+
+        if (fetchError) {
+          alert("Gagal mengambil data brand: " + fetchError.message);
+          return;
+        }
+
+        const updatePromises = affectedBrands.map((brand) =>
+          supabase
+            .from("brands")
+            .update({ sort_order: brand.sort_order + 1 })
+            .eq("id", brand.id),
+        );
+
+        const results = await Promise.all(updatePromises);
+        const hasError = results.some(({ error }) => error);
+        if (hasError) {
+          alert("Gagal menyesuaikan urutan brand.");
+          return;
+        }
+      }
+
       const { error } = await supabase.from("brands").insert({
         name: brandData.name,
         logo_url: brandData.logo_url,
-        sort_order: brandData.sort_order,
+        sort_order: newSortOrder,
         is_active: brandData.is_active,
       });
       if (error) {
