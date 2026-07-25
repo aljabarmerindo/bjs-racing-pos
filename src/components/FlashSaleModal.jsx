@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../supabaseClient";
+import ProductSearchSelect from "./ProductSearchSelect";
 
 function FlashSaleModal({ isOpen, onClose, onSave, flashSaleToEdit }) {
-  const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [flashSale, setFlashSale] = useState({
     product_id: "",
     flash_price: 0,
     original_price: 0,
     stock_allocated: 0,
+    harga_beli: 0,
     sort_order: 0,
     is_active: true,
     valid_from: "",
@@ -15,25 +17,51 @@ function FlashSaleModal({ isOpen, onClose, onSave, flashSaleToEdit }) {
   });
 
   useEffect(() => {
+    if (!isOpen) return;
     const fetchProducts = async () => {
       const { data } = await supabase
         .from("products")
-        .select("id, nama, harga_jual")
+        .select("id, nama, kode, harga_jual, harga_beli, stok, kategori, merek")
         .eq("status", "Aktif")
         .order("nama", { ascending: true });
-      setProducts(data || []);
+      setAllProducts(data || []);
     };
     fetchProducts();
-  }, []);
+  }, [isOpen]);
+
+  const categories = useMemo(() => {
+    const cats = [...new Set(allProducts.map((p) => p.kategori).filter(Boolean))];
+    return cats.sort();
+  }, [allProducts]);
+
+  const filteredProducts = useMemo(() => {
+    if (!flashSale.category) return allProducts;
+    return allProducts.filter((p) => p.kategori === flashSale.category);
+  }, [allProducts, flashSale.category]);
+
+  const selectedProduct = useMemo(() => {
+    if (!flashSale.product_id) return null;
+    return allProducts.find((p) => p.id === flashSale.product_id) || null;
+  }, [allProducts, flashSale.product_id]);
+
+  const margin = useMemo(() => {
+    if (!selectedProduct || !flashSale.flash_price) return 0;
+    const buyPrice = selectedProduct.harga_beli || 0;
+    if (flashSale.flash_price <= 0) return 0;
+    return (((flashSale.flash_price - buyPrice) / flashSale.flash_price) * 100).toFixed(1);
+  }, [selectedProduct, flashSale.flash_price]);
 
   useEffect(() => {
     if (flashSaleToEdit) {
+      const product = allProducts.find((p) => p.id === flashSaleToEdit.product_id);
       setFlashSale({
         id: flashSaleToEdit.id,
         product_id: flashSaleToEdit.product_id || "",
         flash_price: flashSaleToEdit.flash_price || 0,
         original_price: flashSaleToEdit.original_price || 0,
         stock_allocated: flashSaleToEdit.stock_allocated || 0,
+        harga_beli: product?.harga_beli || 0,
+        category: product?.kategori || "",
         sort_order: flashSaleToEdit.sort_order || 0,
         is_active: flashSaleToEdit.is_active ?? true,
         valid_from: flashSaleToEdit.valid_from
@@ -49,13 +77,15 @@ function FlashSaleModal({ isOpen, onClose, onSave, flashSaleToEdit }) {
         flash_price: 0,
         original_price: 0,
         stock_allocated: 0,
+        harga_beli: 0,
+        category: "",
         sort_order: 0,
         is_active: true,
         valid_from: "",
         valid_until: "",
       });
     }
-  }, [flashSaleToEdit, isOpen]);
+  }, [flashSaleToEdit, isOpen, allProducts]);
 
   const handleChange = (e) => {
     const { id, value, type, checked } = e.target;
@@ -65,13 +95,14 @@ function FlashSaleModal({ isOpen, onClose, onSave, flashSaleToEdit }) {
     }));
   };
 
-  const handleProductChange = (e) => {
-    const productId = e.target.value;
-    const product = products.find((p) => p.id === productId);
+  const handleProductSelect = (product) => {
     setFlashSale((prev) => ({
       ...prev,
-      product_id: productId,
-      original_price: product?.harga_jual || prev.original_price,
+      product_id: product.id,
+      original_price: product.harga_jual || 0,
+      stock_allocated: product.stok || 0,
+      harga_beli: product.harga_beli || 0,
+      category: product.kategori || "",
     }));
   };
 
@@ -91,24 +122,82 @@ function FlashSaleModal({ isOpen, onClose, onSave, flashSaleToEdit }) {
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="product_id" className="block mb-1 text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Kategori Produk
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  list="category-list"
+                  value={flashSale.category}
+                  onChange={(e) =>
+                    setFlashSale((prev) => ({
+                      ...prev,
+                      category: e.target.value,
+                      product_id: "",
+                      original_price: 0,
+                      stock_allocated: 0,
+                      harga_beli: 0,
+                    }))
+                  }
+                  placeholder="Ketik atau pilih kategori..."
+                  className="w-full p-2 border rounded"
+                  autoComplete="off"
+                />
+                <datalist id="category-list">
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Produk *
               </label>
-              <select
-                id="product_id"
-                value={flashSale.product_id}
-                onChange={handleProductChange}
-                className="w-full p-2 border rounded"
-                required
-              >
-                <option value="">Pilih Produk</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.nama} (Rp {Number(product.harga_jual).toLocaleString("id-ID")})
-                  </option>
-                ))}
-              </select>
+              <ProductSearchSelect
+                products={filteredProducts}
+                onSelect={handleProductSelect}
+                placeholder={
+                  flashSale.category
+                    ? `Cari produk di kategori "${flashSale.category}"...`
+                    : "Pilih kategori terlebih dahulu..."
+                }
+              />
             </div>
+
+            {selectedProduct && (
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-700 mb-2">
+                  Info Produk
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-slate-500">Harga Beli:</span>
+                    <p className="font-medium text-slate-800">
+                      Rp {Number(selectedProduct.harga_beli || 0).toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Harga Jual:</span>
+                    <p className="font-medium text-slate-800">
+                      Rp {Number(selectedProduct.harga_jual || 0).toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Stok:</span>
+                    <p className="font-medium text-slate-800">
+                      {selectedProduct.stok || 0}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Margin:</span>
+                    <p className="font-medium text-green-600">{margin}%</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -127,16 +216,14 @@ function FlashSaleModal({ isOpen, onClose, onSave, flashSaleToEdit }) {
               </div>
               <div>
                 <label htmlFor="original_price" className="block mb-1 text-sm font-medium text-slate-700">
-                  Harga Asli (Rp) *
+                  Harga Asli (Rp)
                 </label>
                 <input
                   id="original_price"
-                  type="number"
-                  min="0"
-                  value={flashSale.original_price}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded"
-                  required
+                  type="text"
+                  value={flashSale.original_price ? Number(flashSale.original_price).toLocaleString("id-ID") : ""}
+                  readOnly
+                  className="w-full p-2 border rounded bg-slate-100 text-slate-600"
                 />
               </div>
             </div>
@@ -149,6 +236,7 @@ function FlashSaleModal({ isOpen, onClose, onSave, flashSaleToEdit }) {
                 id="stock_allocated"
                 type="number"
                 min="0"
+                max={selectedProduct?.stok || 9999}
                 value={flashSale.stock_allocated}
                 onChange={handleChange}
                 className="w-full p-2 border rounded"
