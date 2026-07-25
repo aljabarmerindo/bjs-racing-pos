@@ -17,6 +17,7 @@ function BrandModal({ isOpen, onClose, onSave, brandToEdit }) {
   useEffect(() => {
     if (brandToEdit) {
       setBrand({
+        id: brandToEdit.id,
         name: brandToEdit.name || "",
         logo_url: brandToEdit.logo_url || "",
         sort_order: brandToEdit.sort_order || 0,
