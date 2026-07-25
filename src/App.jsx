@@ -35,6 +35,7 @@ import ManajemenModelAI from "./pages/ManajemenModelAI.jsx";
 import ManajemenMargin from "./pages/ManajemenMargin.jsx";
 import PromoBanners from "./pages/PromoBanners.jsx";
 import Brands from "./pages/Brands.jsx";
+import FlashSales from "./pages/FlashSales.jsx";
 
 function MainLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -128,6 +129,7 @@ function App() {
             />
             <Route path="/manajemen-promo" element={<PromoBanners />} />
             <Route path="/manajemen-brand" element={<Brands />} />
+            <Route path="/manajemen-flash-sale" element={<FlashSales />} />
             <Route path="penjualan-grosir">
               <Route index element={<PenjualanGrosir />} />
               <Route path="baru" element={<FormPesananGrosir />} />
