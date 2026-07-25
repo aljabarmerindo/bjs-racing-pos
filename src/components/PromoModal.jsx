@@ -81,7 +81,7 @@ function PromoModal({ isOpen, onClose, onSave, promoToEdit }) {
       };
       const compressedFile = await imageCompression(file, options);
 
-      const filePath = `public/promo-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+      const filePath = `promo-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
 
       const { error: uploadError } = await supabase.storage
         .from("promo-banners")

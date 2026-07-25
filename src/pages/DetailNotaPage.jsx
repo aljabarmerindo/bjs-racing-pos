@@ -81,7 +81,7 @@ const DetailNotaPage = () => {
         `Ukuran file terkompres: ${(compressedFile.size / 1024).toFixed(2)} KB`,
       );
 
-      const filePath = `public/bukti-bayar/${invoice.id}-${Date.now()}`;
+      const filePath = `bukti-bayar/${invoice.id}-${Date.now()}`;
 
       // Upload ke Supabase Storage
       const { error: uploadError } = await supabase.storage

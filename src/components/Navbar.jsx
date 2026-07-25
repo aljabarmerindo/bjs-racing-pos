@@ -19,6 +19,7 @@ import {
   FiCpu,
   FiPercent,
   FiImage,
+  FiAward,
 } from "react-icons/fi";
 import { supabase } from "../supabaseClient.js";
 
@@ -47,6 +48,7 @@ function Navbar({ isOpen, onLinkClick }) {
     },
     { name: "Manajemen Voucher", path: "/manajemen-voucher", icon: <FiTag /> },
     { name: "Manajemen Promo", path: "/manajemen-promo", icon: <FiImage /> },
+    { name: "Manajemen Brand", path: "/manajemen-brand", icon: <FiAward /> },
     {
       name: "Penjualan Grosir",
       path: "/penjualan-grosir",
