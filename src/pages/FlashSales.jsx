@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import FlashSaleModal from "../components/FlashSaleModal";
 import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
@@ -53,41 +53,7 @@ function FlashSales() {
     }
   };
 
-  const handleSave = async (flashSaleData) => {
-    if (flashSaleData.id) {
-      const { error } = await supabase
-        .from("flash_sales")
-        .update({
-          product_id: flashSaleData.product_id,
-          flash_price: flashSaleData.flash_price,
-          original_price: flashSaleData.original_price,
-          stock_allocated: flashSaleData.stock_allocated,
-          sort_order: flashSaleData.sort_order,
-          is_active: flashSaleData.is_active,
-          valid_from: flashSaleData.valid_from,
-          valid_until: flashSaleData.valid_until,
-        })
-        .eq("id", flashSaleData.id);
-      if (error) {
-        alert("Gagal mengupdate flash sale: " + error.message);
-        return;
-      }
-    } else {
-      const { error } = await supabase.from("flash_sales").insert({
-        product_id: flashSaleData.product_id,
-        flash_price: flashSaleData.flash_price,
-        original_price: flashSaleData.original_price,
-        stock_allocated: flashSaleData.stock_allocated,
-        sort_order: flashSaleData.sort_order,
-        is_active: flashSaleData.is_active,
-        valid_from: flashSaleData.valid_from,
-        valid_until: flashSaleData.valid_until,
-      });
-      if (error) {
-        alert("Gagal menambah flash sale: " + error.message);
-        return;
-      }
-    }
+  const handleSave = async () => {
     setIsModalOpen(false);
     fetchFlashSales();
   };
