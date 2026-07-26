@@ -21,6 +21,7 @@ import {
   FiImage,
   FiAward,
   FiZap,
+  FiMapPin,
 } from "react-icons/fi";
 import { supabase } from "../supabaseClient.js";
 
@@ -54,6 +55,11 @@ function Navbar({ isOpen, onLinkClick }) {
       name: "Manajemen Flash Sale",
       path: "/manajemen-flash-sale",
       icon: <FiZap />,
+    },
+    {
+      name: "Area GOJEK",
+      path: "/manajemen-gojek-areas",
+      icon: <FiMapPin />,
     },
     {
       name: "Penjualan Grosir",

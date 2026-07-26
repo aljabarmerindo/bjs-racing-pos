@@ -16,7 +16,9 @@ import {
   FiChevronDown,
   FiEdit,
   FiMic,
+  FiMapPin,
 } from "react-icons/fi";
+import { getInternalRates, getBiteshipRates } from "../lib/biteshipClient.js";
 import HeldTransactionsModal from "../components/HeldTransactionsModal.jsx";
 import ReceiptModal from "../components/ReceiptModal.jsx";
 import CustomerRequestModal from "../components/CustomerRequestModal.jsx";
@@ -96,6 +98,12 @@ const CartComponent = ({
   change,
   processCheckout,
   handleHoldTransaction,
+  shippingOptions,
+  selectedShipping,
+  onSelectShipping,
+  shippingCost,
+  isLoadingShipping,
+  shippingError,
 }) => (
   <fieldset
     disabled={!selectedCustomer}
@@ -267,11 +275,61 @@ const CartComponent = ({
             - Rp {new Intl.NumberFormat("id-ID").format(totalDiscount)}
           </span>
         </div>
+        {shippingCost > 0 && (
+          <div className="flex justify-between">
+            <span>Ongkos Kirim</span>
+            <span className="text-blue-600">
+              + Rp {new Intl.NumberFormat("id-ID").format(shippingCost)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between font-bold text-lg">
           <span>Total Akhir</span>
-          <span>Rp {new Intl.NumberFormat("id-ID").format(finalTotal)}</span>
+          <span>Rp {new Intl.NumberFormat("id-ID").format(finalTotal + shippingCost)}</span>
         </div>
       </div>
+
+      {shippingOptions.length > 0 && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Metode Pengiriman
+          </label>
+          {isLoadingShipping ? (
+            <p className="text-sm text-slate-500">Memuat ongkir...</p>
+          ) : shippingError ? (
+            <p className="text-sm text-red-500">{shippingError}</p>
+          ) : (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {shippingOptions.map((opt) => (
+                <label
+                  key={opt.code + opt.service}
+                  className={`flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-slate-50 ${
+                    selectedShipping?.service === opt.service ? "bg-blue-50 border-blue-500" : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="posShipping"
+                      checked={selectedShipping?.service === opt.service}
+                      onChange={() => onSelectShipping(opt)}
+                    />
+                    <div>
+                      <p className="font-semibold text-sm">{opt.name}</p>
+                      <p className="text-xs text-slate-500">{opt.service}</p>
+                      {opt.etd && <p className="text-xs text-blue-600">Estimasi {opt.etd}</p>}
+                    </div>
+                  </div>
+                  <p className="font-bold text-sm text-orange-600">
+                    Rp {new Intl.NumberFormat("id-ID").format(opt.cost)}
+                  </p>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-2">
         <div>
           <label className="text-sm font-medium">Uang Tunai</label>
@@ -306,7 +364,7 @@ const CartComponent = ({
         </button>
         <button
           onClick={() => processCheckout(true)}
-          disabled={cart.length === 0 || parseFloat(cashPaid) < finalTotal}
+          disabled={cart.length === 0 || parseFloat(cashPaid) < finalTotal + shippingCost}
           className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-slate-400"
         >
           Bayar
@@ -345,6 +403,13 @@ function Pos() {
   const [isCartExpanded, setIsCartExpanded] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [customerAddresses, setCustomerAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [shippingOptions, setShippingOptions] = useState([]);
+  const [selectedShipping, setSelectedShipping] = useState(null);
+  const [shippingCost, setShippingCost] = useState(0);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false);
+  const [shippingError, setShippingError] = useState("");
 
   const [activeQuickFilter, setActiveQuickFilter] = useState("semua");
   const [activeUkuranFilter, setActiveUkuranFilter] = useState("semua");
@@ -452,7 +517,7 @@ function Pos() {
     fetchHeldTransactions();
   }, [refreshTrigger]);
 
-  const selectCustomer = (customer) => {
+  const selectCustomer = async (customer) => {
     if (
       cart.length > 0 &&
       !window.confirm("Keranjang akan dikosongkan. Lanjutkan?")
@@ -462,8 +527,27 @@ function Pos() {
     setSelectedCustomer(customer);
     setCustomerSearch("");
     setCustomers([]);
+    setSelectedAddressId(null);
+    setShippingOptions([]);
+    setSelectedShipping(null);
+    setShippingCost(0);
+    setShippingError("");
+
+    if (customer?.id) {
+      const { data } = await supabase
+        .from("customer_addresses")
+        .select("*")
+        .eq("customer_id", customer.id)
+        .order("is_primary", { ascending: false });
+      setCustomerAddresses(data || []);
+      const primary = (data || []).find((a) => a.is_primary);
+      setSelectedAddressId(primary?.id || (data || [])[0]?.id || null);
+    } else {
+      setCustomerAddresses([]);
+      setSelectedAddressId(null);
+    }
   };
-  const resetCustomer = () => {
+  const resetCustomer = async () => {
     if (
       cart.length > 0 &&
       !window.confirm(
@@ -475,6 +559,12 @@ function Pos() {
     setSelectedCustomer(null);
     setCustomerSearch("");
     setCustomers([]);
+    setCustomerAddresses([]);
+    setSelectedAddressId(null);
+    setShippingOptions([]);
+    setSelectedShipping(null);
+    setShippingCost(0);
+    setShippingError("");
   };
   const handleAddToCart = (product) => {
     setCart((curr) => {
@@ -611,12 +701,115 @@ function Pos() {
     setChange(paid >= finalTotal ? paid - finalTotal : 0);
   }, [cashPaid, finalTotal]);
 
+  const calculateTotalWeight = () => {
+    return cart.reduce((sum, item) => {
+      return sum + ((item.berat_gram || 500) * item.quantity);
+    }, 0);
+  };
+
+  const fetchShippingRates = useCallback(async () => {
+    if (!selectedAddressId || cart.length === 0) {
+      setShippingOptions([]);
+      setSelectedShipping(null);
+      setShippingCost(0);
+      return;
+    }
+
+    const selectedAddress = customerAddresses.find(
+      (addr) => addr.id === selectedAddressId,
+    );
+    if (!selectedAddress) return;
+
+    setIsLoadingShipping(true);
+    setShippingError("");
+    const services = [];
+
+    try {
+      const internalResult = await getInternalRates(selectedAddress.destination);
+      if (internalResult.available) {
+        services.push({
+          service: internalResult.service,
+          code: internalResult.code,
+          name: internalResult.name,
+          cost: internalResult.cost,
+          etd: internalResult.etd,
+          description: internalResult.description,
+        });
+      }
+    } catch (err) {
+      console.error("Internal rates error:", err);
+    }
+
+    const hasCoordinates = !!selectedAddress.latitude && !!selectedAddress.longitude;
+    const hasPostalCode = !!selectedAddress.postal_code;
+
+    if (!hasCoordinates && !hasPostalCode) {
+      setShippingError("Alamat belum lengkap. Tambahkan koordinat atau kode pos.");
+      setShippingOptions([]);
+      setIsLoadingShipping(false);
+      return;
+    }
+
+    try {
+      const couriers = [];
+      if (hasCoordinates) couriers.push("gojek");
+      if (hasPostalCode) couriers.push("pos", "jne", "jnt", "sicepat");
+
+      const rates = await getBiteshipRates({
+        destination: {
+          latitude: selectedAddress.latitude ? Number(selectedAddress.latitude) : undefined,
+          longitude: selectedAddress.longitude ? Number(selectedAddress.longitude) : undefined,
+          postal_code: selectedAddress.postal_code || undefined,
+        },
+        weight: calculateTotalWeight(),
+        couriers: couriers.join(","),
+      });
+
+      if (Array.isArray(rates)) {
+        const mapped = rates.map((o) => ({
+          service: o.courier_service_name || o.service,
+          code: o.courier_name || o.code,
+          name: o.courier_name || o.name,
+          cost: o.price || o.cost,
+          etd: o.duration || o.etd,
+          description: o.description || "",
+        }));
+        services.push(...mapped);
+      }
+    } catch (err) {
+      console.error("Biteship rates error:", err);
+    }
+
+    if (services.length === 0) {
+      setShippingError("Tidak ada layanan pengiriman tersedia untuk alamat ini.");
+      setShippingOptions([]);
+      setSelectedShipping(null);
+      setShippingCost(0);
+    } else {
+      services.sort((a, b) => (a.cost || 0) - (b.cost || 0));
+      setShippingOptions(services);
+      setSelectedShipping(services[0]);
+      setShippingCost(services[0].cost || 0);
+    }
+    setIsLoadingShipping(false);
+  }, [selectedAddressId, customerAddresses, cart]);
+
+  useEffect(() => {
+    fetchShippingRates();
+  }, [fetchShippingRates]);
+
   const resetPage = () => {
     setCart([]);
     setProductSearch("");
     setFilteredProducts([]);
     setCashPaid("");
     setSelectedCustomer({ id: null, nama_pelanggan: "Pelanggan Umum" });
+    setCustomerAddresses([]);
+    setSelectedAddressId(null);
+    setShippingOptions([]);
+    setSelectedShipping(null);
+    setShippingCost(0);
+    setShippingError("");
     setIsSubmitting(false);
     setActiveFilters({ merek: "semua", kategori: "semua", ukuran: "semua" });
     setActiveQuickFilter("semua");
@@ -625,7 +818,7 @@ function Pos() {
   };
   const processCheckout = async (isPaid) => {
     const paid = parseFloat(cashPaid) || 0;
-    if (isPaid && paid < finalTotal) {
+    if (isPaid && paid < finalTotal + shippingCost) {
       alert("Pembayaran kurang.");
       return;
     }
@@ -637,13 +830,19 @@ function Pos() {
       customer_id: selectedCustomer?.id,
       total: subtotal,
       diskon: totalDiscount,
-      total_akhir: finalTotal,
+      total_akhir: finalTotal + shippingCost,
       bayar: paid,
       kembalian: isPaid ? change : 0,
       total_laba: profit,
       items: cart,
       status_pembayaran: isPaid ? "Lunas" : "Belum Lunas",
-      sisa_hutang: isPaid ? 0 : finalTotal - paid,
+      sisa_hutang: isPaid ? 0 : finalTotal + shippingCost - paid,
+      shipping_cost: shippingCost,
+      shipping_method: selectedShipping?.name || "",
+      shipping_service: selectedShipping?.service || "",
+      shipping_etd: selectedShipping?.etd || "",
+      shipping_address_id: selectedAddressId,
+      courier_details: selectedShipping || {},
     };
 
     const { data: newTransaction, error } = await supabase
@@ -760,6 +959,12 @@ function Pos() {
     change,
     processCheckout,
     handleHoldTransaction,
+    shippingOptions,
+    selectedShipping,
+    onSelectShipping: setSelectedShipping,
+    shippingCost,
+    isLoadingShipping,
+    shippingError,
   };
 
   const handleClearCart = useCallback(() => setCart([]), []);
@@ -891,6 +1096,29 @@ function Pos() {
                   <FiUserCheck />
                   {selectedCustomer.nama_pelanggan}
                 </p>
+                {customerAddresses.length > 0 && (
+                  <div className="mt-2">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      <FiMapPin className="inline mr-1" />
+                      Alamat Pengiriman
+                    </label>
+                    <select
+                      value={selectedAddressId || ""}
+                      onChange={(e) => setSelectedAddressId(e.target.value)}
+                      className="w-full p-2 border rounded-lg bg-white text-sm"
+                    >
+                      <option value="">Pilih alamat...</option>
+                      {customerAddresses.map((addr) => (
+                        <option key={addr.id} value={addr.id}>
+                          {addr.label || addr.destination_text} - {addr.full_address}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {customerAddresses.length === 0 && selectedCustomer?.id && (
+                  <p className="text-xs text-slate-500 mt-1">Pelanggan belum punya alamat tersimpan.</p>
+                )}
               </div>
               <button
                 onClick={resetCustomer}

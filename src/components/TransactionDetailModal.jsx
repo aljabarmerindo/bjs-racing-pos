@@ -122,6 +122,14 @@ function TransactionDetailModal({ isOpen, onClose, transaction }) {
               - Rp {new Intl.NumberFormat("id-ID").format(transaction.diskon)}
             </span>
           </div>
+          {transaction.shipping_cost > 0 && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Ongkos Kirim</span>
+              <span className="text-blue-600">
+                + Rp {new Intl.NumberFormat("id-ID").format(transaction.shipping_cost)}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between font-bold">
             <span>Total Akhir</span>
             <span>
@@ -142,6 +150,37 @@ function TransactionDetailModal({ isOpen, onClose, transaction }) {
             </span>
           </div>
         </div>
+
+        {(transaction.shipping_method || transaction.shipping_address_id) && (
+          <div className="mt-4 border-t pt-3 text-sm">
+            <h3 className="font-semibold mb-2">Detail Pengiriman</h3>
+            {transaction.shipping_method && (
+              <p className="text-slate-700">
+                <span className="text-slate-500">Kurir:</span> {transaction.shipping_method}
+              </p>
+            )}
+            {transaction.shipping_service && (
+              <p className="text-slate-700">
+                <span className="text-slate-500">Layanan:</span> {transaction.shipping_service}
+              </p>
+            )}
+            {transaction.shipping_etd && (
+              <p className="text-slate-700">
+                <span className="text-slate-500">Estimasi:</span> {transaction.shipping_etd}
+              </p>
+            )}
+            {transaction.shipping_destination_text && (
+              <p className="text-slate-700">
+                <span className="text-slate-500">Alamat:</span> {transaction.shipping_destination_text}
+              </p>
+            )}
+            {transaction.shipping_postal_code && (
+              <p className="text-slate-700">
+                <span className="text-slate-500">Kode Pos:</span> {transaction.shipping_postal_code}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-end mt-6">
           <button

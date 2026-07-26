@@ -216,6 +216,9 @@ function TransactionHistory() {
                 Pelanggan
               </th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                Pengiriman
+              </th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
                 Total Akhir
               </th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
@@ -229,13 +232,13 @@ function TransactionHistory() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="6" className="text-center py-10">
+                <td colSpan="7" className="text-center py-10">
                   Memuat data...
                 </td>
               </tr>
             ) : transactions.length === 0 ? (
               <tr>
-                <td colSpan="6" className="text-center py-10 text-slate-500">
+                <td colSpan="7" className="text-center py-10 text-slate-500">
                   Tidak ada transaksi yang cocok.
                 </td>
               </tr>
@@ -257,6 +260,23 @@ function TransactionHistory() {
                   </td>
                   <td className="px-5 py-4 border-b border-slate-200 text-sm">
                     {trx.nama_pelanggan || "Pelanggan Umum"}
+                  </td>
+                  <td className="px-5 py-4 border-b border-slate-200 text-sm">
+                    {trx.shipping_method ? (
+                      <div>
+                        <p className="font-semibold">{trx.shipping_method}</p>
+                        {trx.shipping_service && (
+                          <p className="text-xs text-slate-500">{trx.shipping_service}</p>
+                        )}
+                        {trx.shipping_cost > 0 && (
+                          <p className="text-xs text-blue-600">
+                            +Rp {new Intl.NumberFormat("id-ID").format(trx.shipping_cost)}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
                   </td>
                   <td className="px-5 py-4 border-b border-slate-200 text-sm font-semibold">
                     Rp {new Intl.NumberFormat("id-ID").format(trx.total_akhir)}
