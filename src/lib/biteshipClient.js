@@ -61,7 +61,8 @@ export async function updateGojekArea(id, payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Gagal memperbarui area GOJEK.");
+  const text = await res.text().catch(() => "");
+  if (!res.ok) throw new Error(`Gagal memperbarui area GOJEK. [${res.status}] ${text}`);
   return res.json();
 }
 
@@ -69,7 +70,8 @@ export async function deleteGojekArea(id) {
   const res = await fetch(`${API_BASE}/api/shipping/biteship/gojek-areas/${id}`, {
     method: "DELETE",
   });
-  if (!res.ok) throw new Error("Gagal menghapus area GOJEK.");
+  const text = await res.text().catch(() => "");
+  if (!res.ok) throw new Error(`Gagal menghapus area GOJEK. [${res.status}] ${text}`);
   return res.json();
 }
 
