@@ -25,11 +25,14 @@ async function handleGet(req, res) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error("GOJEK areas Supabase error:", error);
+      return res.status(500).json({ message: "Gagal memuat area GOJEK.", details: error.message });
+    }
     res.status(200).json(data || []);
   } catch (err) {
     console.error("GOJEK areas error:", err);
-    res.status(500).json({ message: "Gagal memuat area GOJEK." });
+    res.status(500).json({ message: "Gagal memuat area GOJEK.", details: err.message });
   }
 }
 
@@ -46,10 +49,13 @@ async function handlePost(req, res) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("GOJEK area create Supabase error:", error);
+      return res.status(500).json({ message: "Gagal menambah area GOJEK.", details: error.message });
+    }
     res.status(200).json(data);
   } catch (err) {
     console.error("GOJEK area create error:", err);
-    res.status(500).json({ message: "Gagal menambah area GOJEK." });
+    res.status(500).json({ message: "Gagal menambah area GOJEK.", details: err.message });
   }
 }
