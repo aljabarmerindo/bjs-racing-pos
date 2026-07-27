@@ -283,12 +283,17 @@ export default function GojekAreas() {
   };
 
   const handleSave = async (form) => {
-    if (areaToEdit) {
-      await updateGojekArea(areaToEdit.id, form);
-    } else {
-      await createGojekArea(form);
+    try {
+      if (areaToEdit) {
+        await updateGojekArea(areaToEdit.id, form);
+      } else {
+        await createGojekArea(form);
+      }
+      await loadAreas();
+    } catch (err) {
+      console.error("[GojekAreas] handleSave error:", err);
+      alert("Gagal menyimpan area GOJEK: " + err.message);
     }
-    await loadAreas();
   };
 
   const handleEdit = (area) => {

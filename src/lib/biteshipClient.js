@@ -39,44 +39,74 @@ export async function bookBiteshipOrder({ order_id, courier_company, courier_ser
   return res.json();
 }
 
+const withTimeout = (fetchPromise, timeoutMs = 10000, label = "") => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timeout setelah ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  return Promise.race([fetchPromise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+};
+
 export async function getGojekAreas() {
-  const res = await fetch(`${API_BASE}/api/shipping/biteship/gojek-areas`);
+  const res = await withTimeout(
+    fetch(`${API_BASE}/api/shipping/biteship/gojek-areas`),
+    10000,
+    "GET gojek-areas"
+  );
   if (!res.ok) throw new Error("Gagal memuat area GOJEK.");
   return res.json();
 }
 
 export async function createGojekArea(payload) {
-  const res = await fetch(`${API_BASE}/api/shipping/biteship/gojek-areas`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await withTimeout(
+    fetch(`${API_BASE}/api/shipping/biteship/gojek-areas`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+    10000,
+    "POST gojek-areas"
+  );
   if (!res.ok) throw new Error("Gagal menambah area GOJEK.");
   return res.json();
 }
 
 export async function updateGojekArea(id, payload) {
-  const res = await fetch(`${API_BASE}/api/shipping/biteship/gojek-areas/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await withTimeout(
+    fetch(`${API_BASE}/api/shipping/biteship/gojek-areas/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+    10000,
+    "PUT gojek-areas"
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`Gagal memperbarui area GOJEK. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
   return data;
 }
 
 export async function deleteGojekArea(id) {
-  const res = await fetch(`${API_BASE}/api/shipping/biteship/gojek-areas/${id}`, {
-    method: "DELETE",
-  });
+  const res = await withTimeout(
+    fetch(`${API_BASE}/api/shipping/biteship/gojek-areas/${id}`, {
+      method: "DELETE",
+    }),
+    10000,
+    "DELETE gojek-areas"
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`Gagal menghapus area GOJEK. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
   return data;
 }
 
 export async function searchBiteshipAreas(query) {
-  const res = await fetch(`${API_BASE}/api/shipping/biteship/search-area?q=${encodeURIComponent(query)}`);
+  const res = await withTimeout(
+    fetch(`${API_BASE}/api/shipping/biteship/search-area?q=${encodeURIComponent(query)}`),
+    10000,
+    "GET search-area"
+  );
   if (!res.ok) throw new Error("Gagal mencari area.");
   return res.json();
 }
