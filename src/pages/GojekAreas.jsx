@@ -267,13 +267,17 @@ export default function GojekAreas() {
   const [areaToEdit, setAreaToEdit] = useState(null);
 
   const loadAreas = async () => {
+    console.log("[GojekAreas] loadAreas start");
     setLoading(true);
     try {
       const data = await getGojekAreas();
+      console.log("[GojekAreas] loadAreas success:", data.length);
       setAreas(data);
     } catch (err) {
+      console.error("[GojekAreas] loadAreas error:", err);
       alert("Gagal memuat area GOJEK: " + err.message);
     } finally {
+      console.log("[GojekAreas] loadAreas finally");
       setLoading(false);
     }
   };
