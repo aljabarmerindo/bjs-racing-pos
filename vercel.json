@@ -1,36 +1,10 @@
 {
   "rewrites": [
-    {
-      "source": "/api/shipping/internal/rates",
-      "destination": "/api/shipping/internal/rates.js"
-    },
-    {
-      "source": "/api/shipping/biteship/rates",
-      "destination": "/api/shipping/biteship/rates.js"
-    },
-    {
-      "source": "/api/shipping/biteship/book",
-      "destination": "/api/shipping/biteship/book.js"
-    },
-    {
-      "source": "/api/shipping/biteship/search-area",
-      "destination": "/api/shipping/biteship/search-area.js"
-    },
-    {
-      "source": "/api/shipping/biteship/gojek-areas",
-      "destination": "/api/shipping/biteship/gojek-areas.js"
-    },
-    {
-      "source": "/api/shipping/biteship/gojek-areas/(.*)",
-      "destination": "/api/shipping/biteship/gojek-areas/$1.js"
-    },
-    {
-      "source": "/api/shipping/biteship/(.*)",
-      "destination": "/api/shipping/biteship/$1.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/shipping/internal/rates", "destination": "/api/shipping/internal/rates.js" },
+    { "source": "/api/shipping/biteship/rates", "destination": "/api/shipping/biteship/rates.js" },
+    { "source": "/api/shipping/biteship/book", "destination": "/api/shipping/biteship/book.js" },
+    { "source": "/api/shipping/biteship/search-area", "destination": "/api/shipping/biteship/search-area.js" },
+    { "source": "/api/shipping/biteship/gojek-areas", "destination": "/api/shipping/biteship/gojek-areas.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
