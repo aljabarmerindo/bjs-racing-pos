@@ -1,14 +1,4 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../supabaseClient.js";
-import {
-  FiPlus,
-  FiTrash2,
-  FiEdit,
-  FiSave,
-  FiX,
-  FiMapPin,
-  FiSearch,
-} from "react-icons/fi";
 import {
   getGojekAreas,
   createGojekArea,
@@ -17,15 +7,7 @@ import {
   searchBiteshipAreas,
 } from "../lib/biteshipClient.js";
 
-export default function GojekAreas() {
-  const [areas, setAreas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [selected, setSelected] = useState(null);
+function GojekAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
   const [form, setForm] = useState({
     subdistrict_id: "",
     district_name: "",
@@ -34,59 +16,54 @@ export default function GojekAreas() {
     postal_code: "",
     is_active: true,
   });
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState(null);
 
-  const loadAreas = async () => {
-    setLoading(true);
-    try {
-      const data = await getGojekAreas();
-      console.log("[GojekAreas] loaded areas:", data.length);
-      setAreas(data);
-    } catch (err) {
-      console.error("[GojekAreas] load error:", err);
-      alert("Gagal memuat area GOJEK: " + err.message);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (areaToEdit) {
+      setForm({
+        subdistrict_id: areaToEdit.subdistrict_id || "",
+        district_name: areaToEdit.district_name || "",
+        city_name: areaToEdit.city_name || "",
+        province_name: areaToEdit.province_name || "",
+        postal_code: areaToEdit.postal_code || "",
+        is_active: areaToEdit.is_active ?? true,
+      });
+      setSelected(null);
+      setQuery("");
+      setResults([]);
+    } else {
+      setForm({
+        subdistrict_id: "",
+        district_name: "",
+        city_name: "",
+        province_name: "",
+        postal_code: "",
+        is_active: true,
+      });
+      setSelected(null);
+      setQuery("");
+      setResults([]);
     }
-  };
+  }, [areaToEdit, isOpen]);
 
   useEffect(() => {
-    loadAreas();
-  }, []);
-
-  useEffect(() => {
+    if (!isOpen) return;
     if (!query || query.length < 3) {
       setResults([]);
       return;
     }
     setSearching(true);
     searchBiteshipAreas(query)
-      .then((data) => {
-        setResults(data);
-      })
-      .catch((err) => {
-        console.error("Search area error:", err);
-        setResults([]);
-      })
+      .then((data) => setResults(data))
+      .catch(() => setResults([]))
       .finally(() => setSearching(false));
-  }, [query]);
-
-  const resetForm = () => {
-    setForm({
-      subdistrict_id: "",
-      district_name: "",
-      city_name: "",
-      province_name: "",
-      postal_code: "",
-      is_active: true,
-    });
-    setSelected(null);
-    setQuery("");
-    setResults([]);
-    setEditingId(null);
-  };
+  }, [query, isOpen]);
 
   const handleSelect = (area) => {
-    console.log("[GojekAreas] selected area:", area);
     setSelected(area);
     setQuery("");
     setResults([]);
@@ -105,70 +82,44 @@ export default function GojekAreas() {
     e.preventDefault();
     setSaving(true);
     try {
-      console.log("[GojekAreas] submit editingId:", editingId, "form:", form);
-      if (editingId) {
-        await updateGojekArea(editingId, form);
-      } else {
-        await createGojekArea(form);
-      }
-      await loadAreas();
-      resetForm();
+      await onSave(form);
+      onClose();
     } catch (err) {
-      console.error("[GojekAreas] submit error:", err);
       alert("Gagal menyimpan area GOJEK: " + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleEdit = (area) => {
-    console.log("[GojekAreas] edit area:", area);
-    setForm({
-      subdistrict_id: area.subdistrict_id,
-      district_name: area.district_name,
-      city_name: area.city_name,
-      province_name: area.province_name,
-      postal_code: area.postal_code,
-      is_active: area.is_active,
-    });
-    setSelected(null);
-    setQuery("");
-    setResults([]);
-    setEditingId(area.id);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Hapus area GOJEK ini?")) return;
-    try {
-      console.log("[GojekAreas] delete id:", id);
-      await deleteGojekArea(id);
-      await loadAreas();
-    } catch (err) {
-      console.error("[GojekAreas] delete error:", err);
-      alert("Gagal menghapus area GOJEK: " + err.message);
-    }
-  };
+  if (!isOpen) return null;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <FiMapPin className="text-green-600" />
-          Kelola Area GOJEK
-        </h1>
-      </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-full overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-bold">
+            {areaToEdit ? "Edit Area GOJEK" : "Tambah Area Baru"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-slate-500 hover:text-slate-700"
+            type="button"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-bold mb-4">
-          {editingId ? "Edit Area" : "Tambah Area Baru"}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="relative">
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Cari Alamat / Area
             </label>
             <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               <input
                 type="text"
                 value={query}
@@ -178,7 +129,7 @@ export default function GojekAreas() {
               />
             </div>
             {results.length > 0 && (
-              <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5">
+              <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5">
                 {results.map((area) => (
                   <div
                     key={area.id}
@@ -282,28 +233,97 @@ export default function GojekAreas() {
                 Aktif
               </label>
             </div>
-            <div className="md:col-span-2 flex gap-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-slate-400 flex items-center gap-2"
-              >
-                <FiSave />
-                {editingId ? "Simpan Perubahan" : "Tambah Area"}
-              </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 flex items-center gap-2"
-                >
-                  <FiX />
-                  Batal
-                </button>
-              )}
-            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-slate-400 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {areaToEdit ? "Simpan Perubahan" : "Tambah Area"}
+            </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+export default function GojekAreas() {
+  const [areas, setAreas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [areaToEdit, setAreaToEdit] = useState(null);
+
+  const loadAreas = async () => {
+    setLoading(true);
+    try {
+      const data = await getGojekAreas();
+      setAreas(data);
+    } catch (err) {
+      alert("Gagal memuat area GOJEK: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (form) => {
+    if (areaToEdit) {
+      await updateGojekArea(areaToEdit.id, form);
+    } else {
+      await createGojekArea(form);
+    }
+    await loadAreas();
+  };
+
+  const handleEdit = (area) => {
+    setAreaToEdit(area);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Hapus area GOJEK ini?")) return;
+    try {
+      await deleteGojekArea(id);
+      await loadAreas();
+    } catch (err) {
+      alert("Gagal menghapus area GOJEK: " + err.message);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="text-green-600 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Kelola Area GOJEK
+        </h1>
+        <button
+          onClick={() => {
+            setAreaToEdit(null);
+            setIsModalOpen(true);
+          }}
+          className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Tambah Area
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -350,13 +370,17 @@ export default function GojekAreas() {
                         onClick={() => handleEdit(area)}
                         className="text-blue-600 hover:text-blue-800 mr-3"
                       >
-                        <FiEdit />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => handleDelete(area.id)}
                         className="text-red-600 hover:text-red-800"
                       >
-                        <FiTrash2 />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -366,6 +390,13 @@ export default function GojekAreas() {
           </div>
         )}
       </div>
+
+      <GojekAreaModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSave}
+        areaToEdit={areaToEdit}
+      />
     </div>
   );
 }
