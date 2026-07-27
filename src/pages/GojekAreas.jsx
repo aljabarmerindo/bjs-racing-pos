@@ -87,8 +87,9 @@ export default function GojekAreas() {
     setSelected(area);
     setQuery(area.name || "");
     setResults([]);
+    const subdistrict = area.administrativeLevel4 || "";
     setForm({
-      subdistrict_id: area.administrativeLevel4 ? area.id : "",
+      subdistrict_id: subdistrict.toLowerCase().replace(/\s+/g, ""),
       district_name: area.administrativeLevel3 || "",
       city_name: area.administrativeLevel2 || "",
       province_name: area.administrativeLevel1 || "",
@@ -257,7 +258,8 @@ export default function GojekAreas() {
                 value={form.subdistrict_id}
                 onChange={(e) => setForm({ ...form, subdistrict_id: e.target.value })}
                 className="w-full p-2 border rounded-lg"
-                placeholder="Opsional, bisa diisi dari area terpilih"
+                placeholder="Otomatis terisi dari area terpilih"
+                readOnly={!!selected}
               />
             </div>
             <div className="flex items-center gap-2">
