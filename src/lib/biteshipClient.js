@@ -1,4 +1,17 @@
-const API_BASE = "http://localhost:3001";
+const getApiBase = () => {
+  if (typeof window !== "undefined" && window.location.hostname.includes("vercel.app")) {
+    return window.location.origin;
+  }
+  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  if (typeof window !== "undefined" && window.__API_BASE__) {
+    return window.__API_BASE__;
+  }
+  return "http://localhost:3001";
+};
+
+const API_BASE = getApiBase();
 
 export async function getInternalRates(destinationId) {
   const res = await fetch(`${API_BASE}/api/shipping/internal/rates?destination_id=${encodeURIComponent(destinationId)}`);
