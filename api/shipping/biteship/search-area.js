@@ -29,6 +29,7 @@ export default function handler(req, res) {
         }
       );
 
+      console.log("[search-area] Biteship Maps API called with q:", q, "status:", response.status);
       const json = await response.json().catch(() => ({}));
       if (!response.ok) {
         console.error("Biteship search-area error:", json);
