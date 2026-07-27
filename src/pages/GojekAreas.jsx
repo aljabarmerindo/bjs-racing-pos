@@ -87,7 +87,7 @@ export default function GojekAreas() {
 
   const handleSelect = (area) => {
     setSelected(area);
-    setQuery(area.name || "");
+    setQuery("");
     setResults([]);
     const subdistrict = area.administrativeLevel4 || "";
     setForm({
