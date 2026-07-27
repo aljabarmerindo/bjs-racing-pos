@@ -40,13 +40,13 @@ export default function handler(req, res) {
         name: area.name || area.area_name || "",
         type: area.type || "",
         country: area.country || "",
-        administrativeLevel1: area.administrative_level_1 || area.province_name || "",
-        administrativeLevel2: area.administrative_level_2 || area.city_name || "",
-        administrativeLevel3: area.administrative_level_3 || area.district_name || "",
-        administrativeLevel4: area.administrative_level_4 || area.subdistrict_name || "",
+        administrativeLevel1: area.administrative_division_level_1_name || area.province_name || "",
+        administrativeLevel2: area.administrative_division_level_2_name || area.city_name || "",
+        administrativeLevel3: area.administrative_division_level_3_name || area.district_name || "",
+        administrativeLevel4: area.administrative_division_level_4_name || area.subdistrict_name || "",
         latitude: String(area.latitude || area.lat || ""),
         longitude: String(area.longitude || area.lng || ""),
-        postalCode: area.postal_code || area.zip_code || "",
+        postalCode: area.postal_code ? String(area.postal_code) : area.zip_code || "",
       }));
 
       res.status(200).json(areas);

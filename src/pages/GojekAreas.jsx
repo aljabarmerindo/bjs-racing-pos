@@ -86,6 +86,7 @@ export default function GojekAreas() {
   };
 
   const handleSelect = (area) => {
+    console.log("[GojekAreas] selected area:", area);
     setSelected(area);
     setQuery("");
     setResults([]);
