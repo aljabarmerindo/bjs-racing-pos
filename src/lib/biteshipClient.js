@@ -40,13 +40,20 @@ export async function bookBiteshipOrder({ order_id, courier_company, courier_ser
 }
 
 const withTimeout = (fetchPromise, timeoutMs = 10000, label = "") => {
-  let timeoutId;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
       reject(new Error(`${label} timeout setelah ${timeoutMs}ms`));
     }, timeoutMs);
+    fetchPromise
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
   });
-  return Promise.race([fetchPromise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 };
 
 export async function getGojekAreas() {

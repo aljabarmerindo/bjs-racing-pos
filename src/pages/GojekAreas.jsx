@@ -7,6 +7,8 @@ import {
   searchBiteshipAreas,
 } from "../lib/biteshipClient.js";
 
+console.log("[GojekAreas] API_BASE check from page");
+
 function GojekAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
   const [form, setForm] = useState({
     subdistrict_id: "",
@@ -271,16 +273,22 @@ export default function GojekAreas() {
     setLoading(true);
     try {
       const data = await getGojekAreas();
-      console.log("[GojekAreas] loadAreas success:", data.length);
+      console.log("[GojekAreas] loadAreas success count:", data.length);
       setAreas(data);
     } catch (err) {
       console.error("[GojekAreas] loadAreas error:", err);
+      setAreas([]);
       alert("Gagal memuat area GOJEK: " + err.message);
     } finally {
-      console.log("[GojekAreas] loadAreas finally");
+      console.log("[GojekAreas] loadAreas finally setLoading(false)");
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    console.log("[GojekAreas] component mounted, loading initial data...");
+    loadAreas();
+  }, []);
 
   const handleSave = async (form) => {
     try {
