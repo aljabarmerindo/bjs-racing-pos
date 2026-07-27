@@ -21,6 +21,10 @@
       "destination": "/api/shipping/biteship/gojek-areas.js"
     },
     {
+      "source": "/api/shipping/biteship/gojek-areas/(.*)",
+      "destination": "/api/shipping/biteship/gojek-areas/$1.js"
+    },
+    {
       "source": "/api/shipping/biteship/(.*)",
       "destination": "/api/shipping/biteship/$1.js"
     },
