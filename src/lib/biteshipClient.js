@@ -72,3 +72,9 @@ export async function deleteGojekArea(id) {
   if (!res.ok) throw new Error("Gagal menghapus area GOJEK.");
   return res.json();
 }
+
+export async function searchBiteshipAreas(query) {
+  const res = await fetch(`${API_BASE}/api/shipping/biteship/search-area?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error("Gagal mencari area.");
+  return res.json();
+}

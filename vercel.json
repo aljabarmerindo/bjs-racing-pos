@@ -13,6 +13,10 @@
       "destination": "/api/shipping/biteship/book.js"
     },
     {
+      "source": "/api/shipping/biteship/search-area",
+      "destination": "/api/shipping/biteship/search-area.js"
+    },
+    {
       "source": "/api/shipping/biteship/gojek-areas",
       "destination": "/api/shipping/biteship/gojek-areas.js"
     },
