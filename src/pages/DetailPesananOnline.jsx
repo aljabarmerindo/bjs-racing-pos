@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient"; // Sesuaikan path
 import { FiLoader, FiXCircle } from "react-icons/fi";
+import ShippingLabel from "../components/ShippingLabel.jsx";
 
 // Helper functions (tetap sama)
 const formatRupiah = (number) =>
@@ -140,7 +141,7 @@ export default function DetailPesananOnlinePage() {
         order_items (
           quantity,
           price,
-          products (nama, sku)
+          products (nama, sku, berat_gram)
         )
       `,
       )
@@ -373,6 +374,36 @@ export default function DetailPesananOnlinePage() {
                 </button>
               </form>
             </div>
+            {order?.courier_details && (
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h2 className="text-xl font-bold mb-4">Shipping Label</h2>
+                <ShippingLabel
+                  courierCode={order.courier_details.code || order.courier_details.courier_company || ''}
+                  courierName={order.courier_details.name || order.courier_details.courier_company || 'Biteship'}
+                  routingCode={order.courier_details.courier_service_code || order.courier_details.service || '-'}
+                  waybillId={order.courier_details.waybill_id || order.courier_details.tracking_id || order.shipping_receipt_number || '-'}
+                  shippingCost={order.shipping_cost || 0}
+                  serviceName={order.courier_details.service || order.courier_details.courier_service_name || '-'}
+                  referenceId={order.order_number || '-'}
+                  quantity={(order.order_items || []).length}
+                  weight={(order.order_items || []).reduce((sum, item) => sum + ((item.products?.berat_gram || 500) * (item.quantity || 1)), 0)}
+                  recipientName={order.shipping_address?.recipient_name || '-'}
+                  recipientPhone={order.shipping_address?.recipient_phone || '-'}
+                  recipientAddress={order.shipping_address?.full_address || '-'}
+                  recipientCity={order.shipping_address?.destination_text || '-'}
+                  recipientPostal={order.shipping_address?.postal_code || '-'}
+                  senderName="BJS RACING Official"
+                  senderPhone="-"
+                  senderAddress="-"
+                  senderCity="Jepara, Jawa Tengah"
+                  senderPostal="-"
+                  items={(order.order_items || []).map((item) => `${item.quantity}x ${item.products?.nama || 'Item'}`).join(', ') || '-'}
+                  notes={order.notes || ''}
+                  codAmount={order.payment_method === 'cod' ? order.total_amount : 0}
+                  insuranceAmount={0}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
