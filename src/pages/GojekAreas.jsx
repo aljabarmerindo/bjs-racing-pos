@@ -268,8 +268,8 @@ export default function GojekAreas() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [areaToEdit, setAreaToEdit] = useState(null);
 
-  const loadAreas = async () => {
-    console.log("[GojekAreas] loadAreas start");
+  const loadAreas = async (retries = 2) => {
+    console.log("[GojekAreas] loadAreas start, retries:", retries);
     setLoading(true);
     try {
       const data = await getGojekAreas();
@@ -277,6 +277,11 @@ export default function GojekAreas() {
       setAreas(data);
     } catch (err) {
       console.error("[GojekAreas] loadAreas error:", err);
+      if (retries > 0) {
+        console.log("[GojekAreas] retrying loadAreas...");
+        await new Promise((r) => setTimeout(r, 1000));
+        return loadAreas(retries - 1);
+      }
       setAreas([]);
       alert("Gagal memuat area GOJEK: " + err.message);
     } finally {
