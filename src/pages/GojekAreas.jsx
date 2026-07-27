@@ -39,8 +39,10 @@ export default function GojekAreas() {
     setLoading(true);
     try {
       const data = await getGojekAreas();
+      console.log("[GojekAreas] loaded areas:", data.length);
       setAreas(data);
     } catch (err) {
+      console.error("[GojekAreas] load error:", err);
       alert("Gagal memuat area GOJEK: " + err.message);
     } finally {
       setLoading(false);
@@ -102,6 +104,7 @@ export default function GojekAreas() {
     e.preventDefault();
     setSaving(true);
     try {
+      console.log("[GojekAreas] submit editingId:", editingId, "form:", form);
       if (editingId) {
         await updateGojekArea(editingId, form);
       } else {
@@ -110,6 +113,7 @@ export default function GojekAreas() {
       await loadAreas();
       resetForm();
     } catch (err) {
+      console.error("[GojekAreas] submit error:", err);
       alert("Gagal menyimpan area GOJEK: " + err.message);
     } finally {
       setSaving(false);
@@ -117,6 +121,7 @@ export default function GojekAreas() {
   };
 
   const handleEdit = (area) => {
+    console.log("[GojekAreas] edit area:", area);
     setForm({
       subdistrict_id: area.subdistrict_id,
       district_name: area.district_name,
@@ -134,9 +139,11 @@ export default function GojekAreas() {
   const handleDelete = async (id) => {
     if (!window.confirm("Hapus area GOJEK ini?")) return;
     try {
+      console.log("[GojekAreas] delete id:", id);
       await deleteGojekArea(id);
       await loadAreas();
     } catch (err) {
+      console.error("[GojekAreas] delete error:", err);
       alert("Gagal menghapus area GOJEK: " + err.message);
     }
   };
