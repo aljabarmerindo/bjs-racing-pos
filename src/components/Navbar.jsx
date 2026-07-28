@@ -62,6 +62,11 @@ function Navbar({ isOpen, onLinkClick }) {
       icon: <FiMapPin />,
     },
     {
+      name: "BJS Express Area",
+      path: "/manajemen-bjs-express-area",
+      icon: <FiTruck />,
+    },
+    {
       name: "Penjualan Grosir",
       path: "/penjualan-grosir",
       icon: <FiBriefcase />,

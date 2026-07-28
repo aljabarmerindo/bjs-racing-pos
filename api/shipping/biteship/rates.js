@@ -36,7 +36,7 @@ export default function handler(req, res) {
     try {
       const destination = req.body?.destination || {};
       const weight = Number(req.body?.weight || 0);
-      const couriers = String(req.body?.couriers || "gojek,pos,jne,jnt,sicepat").replace(/\s+/g, "");
+      const couriers = String(req.body?.couriers || "gojek,pos,jne,jnt,jntcargo").replace(/\s+/g, "");
 
       if (!weight || weight <= 0) {
         return res.status(400).json({ message: "Berat barang tidak valid." });

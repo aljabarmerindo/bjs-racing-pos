@@ -80,7 +80,7 @@ app.post("/api/shipping/biteship/rates", async (req, res) => {
   try {
     const destination = req.body?.destination || {};
     const weight = Number(req.body?.weight || 0);
-    const couriers = String(req.body?.couriers || "gojek,pos,jne,jnt,sicepat").replace(/\s+/g, "");
+    const couriers = String(req.body?.couriers || "gojek,pos,jne,jnt,jntcargo").replace(/\s+/g, "");
 
     if (!weight || weight <= 0) {
       return res.status(400).json({ message: "Berat barang tidak valid." });
@@ -247,6 +247,87 @@ app.delete("/api/shipping/biteship/gojek-areas/:id", async (req, res) => {
   } catch (err) {
     console.error("GOJEK area delete error:", err);
     res.status(500).json({ message: "Gagal menghapus area GOJEK." });
+  }
+});
+
+// BJS Express service areas CRUD
+app.get("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("bjs_express_areas")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error("BJS Express areas error:", err);
+    res.status(500).json({ message: "Gagal memuat area BJS Express." });
+  }
+});
+
+app.post("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
+  try {
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes } = req.body;
+    if (!district_name || !city_name || !province_name || !postal_code) {
+      return res.status(400).json({ message: "Field wajib tidak lengkap." });
+    }
+
+    const { data, error } = await supabase
+      .from("bjs_express_areas")
+      .insert({
+        subdistrict_id: subdistrict_id || "",
+        district_name,
+        city_name,
+        province_name,
+        postal_code: String(postal_code),
+        is_active,
+        notes: notes || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("BJS Express area create error:", err);
+    res.status(500).json({ message: "Gagal menambah area BJS Express." });
+  }
+});
+
+app.put("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes } = req.body;
+
+    const { data, error } = await supabase
+      .from("bjs_express_areas")
+      .update({ subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("BJS Express area update error:", err);
+    res.status(500).json({ message: "Gagal memperbarui area BJS Express." });
+  }
+});
+
+app.delete("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from("bjs_express_areas")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error("BJS Express area delete error:", err);
+    res.status(500).json({ message: "Gagal menghapus area BJS Express." });
   }
 });
 

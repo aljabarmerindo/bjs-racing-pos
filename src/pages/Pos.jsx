@@ -753,7 +753,7 @@ function Pos() {
     try {
       const couriers = [];
       if (hasCoordinates) couriers.push("gojek");
-      if (hasPostalCode) couriers.push("pos", "jne", "jnt", "sicepat");
+      if (hasPostalCode) couriers.push("pos", "jne", "jnt", "jntcargo");
 
       const rates = await getBiteshipRates({
         destination: {

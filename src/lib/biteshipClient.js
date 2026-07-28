@@ -23,7 +23,7 @@ export async function getBiteshipRates({ destination, weight, couriers }) {
   const res = await fetch(`${API_BASE}/api/shipping/biteship/rates`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ destination, weight, couriers: couriers || "gojek,pos,jne,jnt,sicepat" }),
+    body: JSON.stringify({ destination, weight, couriers: couriers || "gojek,pos,jne,jnt,jntcargo" }),
   });
   if (!res.ok) throw new Error("Gagal mengambil tarif Biteship.");
   return res.json();
@@ -110,6 +110,55 @@ export async function deleteGojekArea(id) {
   );
   const data = await withTimeout(res.json(), 10000, "parse delete gojek-area JSON").catch(() => ({}));
   if (!res.ok) throw new Error(`Gagal menghapus area GOJEK. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}
+
+export async function getBjsExpressAreas() {
+  const res = await fetchWithTimeout(`${API_BASE}/api/shipping/biteship/bjs-express-areas`, {}, 10000, "GET bjs-express-areas");
+  if (!res.ok) throw new Error("Gagal memuat area BJS Express.");
+  return withTimeout(res.json(), 10000, "parse bjs-express-areas JSON");
+}
+
+export async function createBjsExpressArea(payload) {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/api/shipping/biteship/bjs-express-areas`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    10000,
+    "POST bjs-express-areas"
+  );
+  if (!res.ok) throw new Error("Gagal menambah area BJS Express.");
+  return withTimeout(res.json(), 10000, "parse create bjs-express-area JSON");
+}
+
+export async function updateBjsExpressArea(id, payload) {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/api/shipping/biteship/bjs-express-areas/${id}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    10000,
+    "PUT bjs-express-areas"
+  );
+  const data = await withTimeout(res.json(), 10000, "parse update bjs-express-area JSON").catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal memperbarui area BJS Express. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}
+
+export async function deleteBjsExpressArea(id) {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/api/shipping/biteship/bjs-express-areas/${id}`,
+    { method: "DELETE" },
+    10000,
+    "DELETE bjs-express-areas"
+  );
+  const data = await withTimeout(res.json(), 10000, "parse delete bjs-express-area JSON").catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal menghapus area BJS Express. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
   return data;
 }
 
