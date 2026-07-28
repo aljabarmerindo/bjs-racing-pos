@@ -13,8 +13,10 @@ const getApiBase = () => {
 
 const API_BASE = getApiBase();
 
-export async function getInternalRates(destinationId) {
-  const res = await fetch(`${API_BASE}/api/shipping/internal/rates?destination_id=${encodeURIComponent(destinationId)}`);
+export async function getInternalRates(destinationId, gojekCost) {
+  let url = `${API_BASE}/api/shipping/internal/rates?destination_id=${encodeURIComponent(destinationId)}`;
+  if (gojekCost != null) url += `&gojek_cost=${encodeURIComponent(gojekCost)}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Gagal mengambil tarif internal.");
   return res.json();
 }

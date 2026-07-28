@@ -724,22 +724,6 @@ function Pos() {
     setShippingError("");
     const services = [];
 
-    try {
-      const internalResult = await getInternalRates(selectedAddress.destination);
-      if (internalResult.available) {
-        services.push({
-          service: internalResult.service,
-          code: internalResult.code,
-          name: internalResult.name,
-          cost: internalResult.cost,
-          etd: internalResult.etd,
-          description: internalResult.description,
-        });
-      }
-    } catch (err) {
-      console.error("Internal rates error:", err);
-    }
-
     const hasCoordinates = !!selectedAddress.latitude && !!selectedAddress.longitude;
     const hasPostalCode = !!selectedAddress.postal_code;
 
@@ -776,20 +760,56 @@ function Pos() {
         }));
         services.push(...mapped);
       }
+
+      const gojekService = services.find(
+        (s) => s.code === "gojek" && s.service.toLowerCase().includes("same day")
+      );
+      const gojekCost = gojekService?.cost;
+
+      if (gojekCost && selectedAddress.destination) {
+        try {
+          const internalResult = await getInternalRates(selectedAddress.destination, gojekCost);
+          if (internalResult.available) {
+            services.push({
+              service: internalResult.service,
+              code: internalResult.code,
+              name: internalResult.name,
+              cost: internalResult.cost,
+              etd: internalResult.etd,
+              description: internalResult.description,
+            });
+          }
+        } catch (err) {
+          console.error("Internal rates error:", err);
+        }
+      }
     } catch (err) {
       console.error("Biteship rates error:", err);
     }
 
-    if (services.length === 0) {
+    const now = new Date();
+    const jakartaHour = now.getUTCHours() + 7;
+    const jakartaMinutes = now.getUTCMinutes();
+    const jakartaTime = jakartaHour * 60 + jakartaMinutes;
+    const gojekCutoff = 18 * 60;
+    const bjsCutoff = 15 * 60;
+
+    const filtered = services.filter((s) => {
+      if (s.code === "gojek" && jakartaTime >= gojekCutoff) return false;
+      if (s.code === "internal" && jakartaTime >= bjsCutoff) return false;
+      return true;
+    });
+
+    if (filtered.length === 0) {
       setShippingError("Tidak ada layanan pengiriman tersedia untuk alamat ini.");
       setShippingOptions([]);
       setSelectedShipping(null);
       setShippingCost(0);
     } else {
-      services.sort((a, b) => (a.cost || 0) - (b.cost || 0));
-      setShippingOptions(services);
-      setSelectedShipping(services[0]);
-      setShippingCost(services[0].cost || 0);
+      filtered.sort((a, b) => (a.cost || 0) - (b.cost || 0));
+      setShippingOptions(filtered);
+      setSelectedShipping(filtered[0]);
+      setShippingCost(filtered[0].cost || 0);
     }
     setIsLoadingShipping(false);
   }, [selectedAddressId, customerAddresses, cart]);

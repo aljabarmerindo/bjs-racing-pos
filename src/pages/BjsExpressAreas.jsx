@@ -101,9 +101,8 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
     setSelected(area);
     setQuery("");
     setResults([]);
-    const subdistrict = area.administrativeLevel4 || "";
     setForm({
-      subdistrict_id: subdistrict.toLowerCase().replace(/\s+/g, ""),
+      subdistrict_id: area.id || "",
       district_name: area.administrativeLevel3 || "",
       city_name: area.administrativeLevel2 || "",
       province_name: area.administrativeLevel1 || "",

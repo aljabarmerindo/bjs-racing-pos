@@ -41,33 +41,42 @@ async function biteshipRequest(method, path, body) {
   return json;
 }
 
-// Internal shipping rates (Kurir Toko BJS RACING)
+// BJS Express internal shipping rates
 app.get("/api/shipping/internal/rates", async (req, res) => {
   try {
     const destinationId = req.query.destination_id;
+    const gojekCostParam = req.query.gojek_cost;
+
     if (!destinationId) {
       return res.status(400).json({ message: "destination_id diperlukan." });
     }
 
-    const { data: zone } = await supabase
-      .from("internal_shipping_zones")
-      .select("shipping_cost, zone_name")
+    const { data: area } = await supabase
+      .from("bjs_express_areas")
+      .select("id")
       .eq("subdistrict_id", destinationId)
       .eq("is_active", true)
-      .single();
+      .maybeSingle();
 
-    if (!zone) {
+    if (!area) {
       return res.json({ available: false });
     }
 
+    const gojekCost = gojekCostParam ? Number(gojekCostParam) : null;
+    if (!gojekCost || gojekCost < 1000) {
+      return res.json({ available: false });
+    }
+
+    const bjsCost = gojekCost - 1000;
+
     res.json({
       available: true,
-      name: "Kurir Toko BJS RACING",
+      name: "BJS RACING",
       code: "internal",
-      cost: zone.shipping_cost,
-      service: "Kurir Toko BJS RACING",
+      cost: bjsCost,
+      service: "BJS Express",
       description: "",
-      etd: "0 hari (sameday)",
+      etd: "6 - 8 Hours",
     });
   } catch (err) {
     console.error("Internal rates error:", err);
