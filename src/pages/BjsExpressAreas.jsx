@@ -7,10 +7,6 @@ import {
   searchBiteshipAreas,
 } from "../lib/biteshipClient.js";
 
-const API_BASE = (typeof window !== "undefined" && window.location.hostname.includes("vercel.app"))
-  ? window.location.origin
-  : "http://localhost:3001";
-
 function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
   const [form, setForm] = useState({
     subdistrict_id: "",
@@ -20,14 +16,14 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
     postal_code: "",
     is_active: true,
     notes: "",
+    open_time: "08:00",
+    cutoff_time: "15:00",
   });
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [gojekCost, setGojekCost] = useState(null);
-  const [loadingCost, setLoadingCost] = useState(false);
 
   useEffect(() => {
     if (areaToEdit) {
@@ -39,6 +35,8 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         postal_code: areaToEdit.postal_code || "",
         is_active: areaToEdit.is_active ?? true,
         notes: areaToEdit.notes || "",
+        open_time: areaToEdit.open_time || "08:00",
+        cutoff_time: areaToEdit.cutoff_time || "15:00",
       });
       setSelected(null);
       setQuery("");
@@ -52,6 +50,8 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         postal_code: "",
         is_active: true,
         notes: "",
+        open_time: "08:00",
+        cutoff_time: "15:00",
       });
       setSelected(null);
       setQuery("");
@@ -72,31 +72,6 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
       .finally(() => setSearching(false));
   }, [query, isOpen]);
 
-  useEffect(() => {
-    if (!form.postal_code || areaToEdit) return;
-    setLoadingCost(true);
-    fetch(`${API_BASE}/api/shipping/biteship/rates`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        destination: { postal_code: form.postal_code },
-        weight: 1000,
-        couriers: "gojek",
-      }),
-    })
-      .then((r) => r.json())
-      .then((rates) => {
-        const gojek = rates.find((r) => r.courier_service_code === "same_day");
-        if (gojek) {
-          setGojekCost(gojek.price);
-        } else {
-          setGojekCost(null);
-        }
-      })
-      .catch(() => setGojekCost(null))
-      .finally(() => setLoadingCost(false));
-  }, [form.postal_code, areaToEdit]);
-
   const handleSelect = (area) => {
     setSelected(area);
     setQuery("");
@@ -108,7 +83,9 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
       province_name: area.administrativeLevel1 || "",
       postal_code: area.postalCode || "",
       is_active: true,
-      notes: "",
+      notes: form.notes,
+      open_time: form.open_time,
+      cutoff_time: form.cutoff_time,
     });
   };
 
@@ -255,18 +232,6 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 readOnly={!!selected}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Catatan
-              </label>
-              <input
-                type="text"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                className="w-full p-2 border rounded-lg"
-                placeholder="Opsional"
-              />
-            </div>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -279,22 +244,40 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 Aktif
               </label>
             </div>
-            <div className="flex items-center">
-              {loadingCost ? (
-                <span className="text-xs text-slate-500">Mengambil tarif Gojek...</span>
-              ) : gojekCost !== null ? (
-                <span className="text-xs text-green-600">
-                  Referensi Gojek Same Day: Rp {gojekCost.toLocaleString("id-ID")}
-                  <br />
-                  <span className="text-orange-600 font-semibold">
-                    BJS Express: Rp {(gojekCost - 1000).toLocaleString("id-ID")}
-                  </span>
-                </span>
-              ) : (
-                <span className="text-xs text-slate-400">
-                  Isi kode pos untuk melihat referensi tarif Gojek
-                </span>
-              )}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Jam Buka (WIB)
+              </label>
+              <input
+                type="time"
+                value={form.open_time}
+                onChange={(e) => setForm({ ...form, open_time: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Jam Tutup / Cut-off (WIB)
+              </label>
+              <input
+                type="time"
+                value={form.cutoff_time}
+                onChange={(e) => setForm({ ...form, cutoff_time: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+                required
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Catatan
+              </label>
+              <textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+                rows={2}
+              />
             </div>
           </div>
 
@@ -309,7 +292,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
             <button
               type="submit"
               disabled={saving}
-              className="bg-orange-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-700 disabled:bg-slate-400 flex items-center gap-2"
+              className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-slate-400 flex items-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -383,7 +366,7 @@ export default function BjsExpressAreas() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" className="text-orange-600 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m0 0l6 3m-6-3V7m6 10l-5.447-2.724A1 1 0 0013.553 13H9.447a1 1 0 00-1.447.894L9 15m0 0l6 3" />
           </svg>
           Kelola Area BJS Express
         </h1>
@@ -418,6 +401,8 @@ export default function BjsExpressAreas() {
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kota</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Provinsi</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kode Pos</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Jam Buka</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Cut-off</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Status</th>
                   <th className="px-6 py-3 text-right font-medium text-slate-500">Aksi</th>
                 </tr>
@@ -429,6 +414,8 @@ export default function BjsExpressAreas() {
                     <td className="px-6 py-4">{area.city_name}</td>
                     <td className="px-6 py-4">{area.province_name}</td>
                     <td className="px-6 py-4">{area.postal_code}</td>
+                    <td className="px-6 py-4">{area.open_time || "-"}</td>
+                    <td className="px-6 py-4">{area.cutoff_time || "-"}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${

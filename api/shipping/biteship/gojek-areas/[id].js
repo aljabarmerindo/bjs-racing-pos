@@ -1,5 +1,3 @@
-// File: api/shipping/biteship/[id].js
-// Vercel Serverless Function untuk update/delete GOJEK service area by ID.
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -25,11 +23,20 @@ export default function handler(req, res) {
 
 async function handlePut(req, res, id) {
   try {
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, open_time, cutoff_time } = req.body;
 
     const { data, error } = await supabase
       .from("gojek_service_areas")
-      .update({ subdistrict_id, district_name, city_name, province_name, postal_code, is_active })
+      .update({ 
+        subdistrict_id, 
+        district_name, 
+        city_name, 
+        province_name, 
+        postal_code, 
+        is_active, 
+        open_time: open_time || "08:00:00",
+        cutoff_time: cutoff_time || "18:00:00"
+      })
       .eq("id", id)
       .select()
       .single();

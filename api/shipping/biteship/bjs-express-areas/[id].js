@@ -23,11 +23,21 @@ export default function handler(req, res) {
 
 async function handlePut(req, res, id) {
   try {
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time } = req.body;
 
     const { data, error } = await supabase
       .from("bjs_express_areas")
-      .update({ subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes })
+      .update({ 
+        subdistrict_id, 
+        district_name, 
+        city_name, 
+        province_name, 
+        postal_code, 
+        is_active, 
+        notes,
+        open_time: open_time || "08:00:00",
+        cutoff_time: cutoff_time || "15:00:00"
+      })
       .eq("id", id)
       .select()
       .single();

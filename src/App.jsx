@@ -39,6 +39,8 @@ import FlashSales from "./pages/FlashSales.jsx";
 import GojekAreas from "./pages/GojekAreas.jsx";
 import BjsExpressAreas from "./pages/BjsExpressAreas.jsx";
 
+
+
 function MainLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   return (

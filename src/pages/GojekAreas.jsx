@@ -15,6 +15,8 @@ function GojekAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
     province_name: "",
     postal_code: "",
     is_active: true,
+    open_time: "08:00",
+    cutoff_time: "18:00",
   });
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -31,6 +33,8 @@ function GojekAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         province_name: areaToEdit.province_name || "",
         postal_code: areaToEdit.postal_code || "",
         is_active: areaToEdit.is_active ?? true,
+        open_time: areaToEdit.open_time || "08:00",
+        cutoff_time: areaToEdit.cutoff_time || "18:00",
       });
       setSelected(null);
       setQuery("");
@@ -43,6 +47,8 @@ function GojekAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         province_name: "",
         postal_code: "",
         is_active: true,
+        open_time: "08:00",
+        cutoff_time: "18:00",
       });
       setSelected(null);
       setQuery("");
@@ -74,6 +80,8 @@ function GojekAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
       province_name: area.administrativeLevel1 || "",
       postal_code: area.postalCode || "",
       is_active: true,
+      open_time: form.open_time,
+      cutoff_time: form.cutoff_time,
     });
   };
 
@@ -232,6 +240,30 @@ function GojekAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 Aktif
               </label>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Jam Buka (WIB)
+              </label>
+              <input
+                type="time"
+                value={form.open_time}
+                onChange={(e) => setForm({ ...form, open_time: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Jam Tutup / Cut-off (WIB)
+              </label>
+              <input
+                type="time"
+                value={form.cutoff_time}
+                onChange={(e) => setForm({ ...form, cutoff_time: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+                required
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t">
@@ -355,6 +387,8 @@ export default function GojekAreas() {
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kota</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Provinsi</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kode Pos</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Jam Buka</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Cut-off</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Status</th>
                   <th className="px-6 py-3 text-right font-medium text-slate-500">Aksi</th>
                 </tr>
@@ -366,6 +400,8 @@ export default function GojekAreas() {
                     <td className="px-6 py-4">{area.city_name}</td>
                     <td className="px-6 py-4">{area.province_name}</td>
                     <td className="px-6 py-4">{area.postal_code}</td>
+                    <td className="px-6 py-4">{area.open_time || "-"}</td>
+                    <td className="px-6 py-4">{area.cutoff_time || "-"}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${

@@ -1,25 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL || "";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY || "";
-
-let supabase = null;
-try {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("Missing Supabase env vars:", { SUPABASE_URL: !!SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY });
-  } else {
-    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  }
-} catch (err) {
-  console.error("Supabase client init error:", err);
-}
+const supabase = createClient(
+  process.env.PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
+);
 
 export default function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-
-  if (!supabase) {
-    return res.status(500).json({ message: "Supabase client tidak terinisialisasi." });
-  }
 
   if (req.method === "GET") {
     return handleGet(req, res);
@@ -51,7 +38,7 @@ async function handleGet(req, res) {
 
 async function handlePost(req, res) {
   try {
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time } = req.body;
     if (!district_name || !city_name || !province_name || !postal_code) {
       return res.status(400).json({ message: "Field wajib tidak lengkap." });
     }
@@ -66,6 +53,8 @@ async function handlePost(req, res) {
         postal_code: String(postal_code),
         is_active,
         notes: notes || null,
+        open_time: open_time || "08:00:00",
+        cutoff_time: cutoff_time || "15:00:00",
       })
       .select()
       .single();

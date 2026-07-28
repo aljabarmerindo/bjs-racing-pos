@@ -1,0 +1,7 @@
+ALTER TABLE public.gojek_service_areas
+  ADD COLUMN IF NOT EXISTS open_time TIME DEFAULT '08:00:00',
+  ADD COLUMN IF NOT EXISTS cutoff_time TIME DEFAULT '18:00:00';
+
+ALTER TABLE public.bjs_express_areas
+  ADD COLUMN IF NOT EXISTS open_time TIME DEFAULT '08:00:00',
+  ADD COLUMN IF NOT EXISTS cutoff_time TIME DEFAULT '15:00:00';
