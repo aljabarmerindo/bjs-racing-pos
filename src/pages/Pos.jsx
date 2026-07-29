@@ -788,7 +788,7 @@ function Pos() {
     }
 
     const now = new Date();
-    const jakartaHour = now.getUTCHours() + 7;
+    const jakartaHour = (now.getUTCHours() + 7) % 24;
     const jakartaMinutes = now.getUTCMinutes();
     const jakartaTime = jakartaHour * 60 + jakartaMinutes;
     const gojekCutoff = 18 * 60;
