@@ -841,9 +841,7 @@ function Pos() {
     forceRefresh();
   };
   const processCheckout = async (isPaid) => {
-    console.log('[DEBUG] processCheckout called', { isPaid, timestamp: Date.now(), cartQty: cart.length, cartItems: cart.map(i => ({id: i.id, qty: i.quantity, stok: i.stok})) });
     if (isSubmittingRef.current) {
-      console.log('[DEBUG] processCheckout blocked - already submitting');
       return;
     }
     isSubmittingRef.current = true;
@@ -876,14 +874,12 @@ function Pos() {
       courier_details: selectedShipping || {},
     };
 
-    console.log('[DEBUG] Transaction payload:', { total: trxData.total, items_count: trxData.items?.length });
     const { data: newTransaction, error } = await supabase
       .from("transactions")
       .insert(trxData)
       .select()
       .single();
 
-    console.log('[DEBUG] Transaction insert result:', { error, transactionId: newTransaction?.id });
     if (error) {
       alert("Gagal menyimpan transaksi: " + error.message);
       isSubmittingRef.current = false;
@@ -922,13 +918,11 @@ function Pos() {
       perubahan: -item.quantity,
       keterangan: `Terjual via POS (Trx ID: ${newTransaction.id})`,
     }));
-    console.log('[DEBUG] stock_logs payload:', JSON.stringify(stockLogInserts));
 
     const { error: stockLogError } = await supabase
       .from("stock_logs")
       .insert(stockLogInserts);
 
-    console.log('[DEBUG] stock_logs insert result:', { error: stockLogError });
     if (stockLogError) {
       await supabase.from("transactions").delete().eq("id", newTransaction.id);
       alert("Gagal mengurangi stok: " + stockLogError.message + "\nTransaksi telah dibatalkan.");
@@ -946,7 +940,6 @@ function Pos() {
     if (
       window.confirm(successMsg + "\n\nApakah Anda ingin menampilkan struk?")
     ) {
-      console.log('[DEBUG] Checkout complete, showing receipt');
       setReceiptData({ ...newTransaction, customer_data: selectedCustomer });
       forceRefresh();
     } else {
