@@ -156,56 +156,41 @@ Add `supabase/migrations/20260801000000_fix_double_stock_update.sql` documenting
 
 ## Remaining Action Items
 
-### 1. Fix Double-Click Race Condition in `processCheckout`
+### 1. ✅ Fix Double-Click Race Condition in `processCheckout`
 
 **File**: `src/pages/Pos.jsx`
 
-Replace the `useState`-based guard with a `useRef` for synchronous protection:
+Replaced the `useState`-based guard with a `useRef` for synchronous protection:
+- Added `isSubmittingRef = useRef(false)` at line 395
+- Replaced `if (isSubmitting) return;` with `isSubmittingRef.current` guard
+- Added `isSubmittingRef.current = false;` reset at all return points
 
-```javascript
-// Current (line ~403 area — add this):
-import { useRef } from "react";
-const isSubmittingRef = useRef(false);
+### 2. ✅ Fix: Pass isHolding/isSubmitting as CartComponent Props
 
-// In processCheckout (line 840):
-const processCheckout = async (isPaid) => {
-  if (isSubmittingRef.current) return;
-  isSubmittingRef.current = true;
-  // ... rest of function ...
-  // IMPORTANT: Reset in finally block:
-  // isSubmittingRef.current = false;
-```
+**File**: `src/pages/Pos.jsx`
 
-This prevents both double-clicks and rapid Enter-key triggers from causing duplicate `stock_logs` inserts.
+`isHolding` and `isSubmitting` were used in CartComponent buttons but not passed as props. This caused a `ReferenceError` crash in the deployed production bundle. Added both to CartComponent props destructuring and `cartProps` object.
 
-### 2. Ensure Product List Refreshes After Checkout (OK branch)
+### 3. Debug Logs for Stock Investigation
 
-**File**: `src/pages/Pos.jsx`, around line 928-931
+**File**: `src/pages/Pos.jsx`
 
-Add `forceRefresh()` call in the receipt confirmation "OK" branch:
+Added `console.log('[DEBUG]...')` statements at key points in `processCheckout` to trace:
+- Whether the function is called once or multiple times
+- The stock_logs payload contents
+- Transaction insert results
 
-```javascript
-if (window.confirm(successMsg + "\n\nApakah Anda ingin menampilkan struk?")) {
-  setReceiptData({ ...newTransaction, customer_data: selectedCustomer });
-  forceRefresh();  // ← ADD THIS
-} else {
-  resetPage();
-}
-```
+**User instructions**: Hard refresh browser, open Console (F12), perform checkout, paste console output.
 
-### 3. Add Button Disable During Submission
+### 4. ✅ Ensure Product List Refreshes After Checkout
 
-**File**: `src/pages/Pos.jsx`, around line 358-371
+Added `forceRefresh()` call in the receipt confirmation "OK" branch.
 
-The "Bayar" button currently has no `disabled` state for `isSubmitting`. Add it to prevent UI confusion:
+### 5. ✅ Add Button Disable State
 
-```javascript
-<button
-  onClick={() => processCheckout(true)}
-  disabled={cart.length === 0 || isSubmitting || parseFloat(cashPaid) < finalTotal + shippingCost}
-  // ...
->
-```
+Added `isSubmitting` to disabled props on "Hutang" and "Bayar" buttons.
+
+Added `isSubmitting` to disabled props on "Hutang" and "Bayar" buttons.
 
 ## Risk & Notes
 
@@ -225,50 +210,37 @@ After the Vercel deployment (Sat Aug 01 2026 17:40:53 GMT, matching commit `502e
 |---|---|---|---|
 | 2026-08-01 17:47:33 | `ab802418...` | **-1** | `724cf308...` |
 | 2026-08-01 17:50:07 | `ab802418...` | **-1** | `227764d2...` |
+| 2026-08-01 18:38:55 | `ab802418...` | **-1** | `4843949e...` |
 
-Product "Test" (ab802418) currently has `stok=995`, matching expected decrease from these two single-quantity checkouts. Each entry has exactly one `stock_logs` row with `perubahan=-1`.
+Product "Test" (ab802418) currently has `stok=995`, matching expected decrease from these single-quantity checkouts. Each entry has exactly one `stock_logs` row with `perubahan=-1`.
 
-**Deployed Vercel bundle** (`index-BLF0FbVh.js`) confirmed to contain the fix — no `.from("products").update({stok:...})` in checkout path; only `stock_logs.insert()` with `perubahan: -item.quantity`.
+**Deployed Vercel bundle** confirmed to contain the fix — no `.from("products").update({stok:...})` in checkout path; only `stock_logs.insert()` with `perubahan: -item.quantity`.
 
-### Most Likely Explanation
+### Mystery: Two Stok Updates per Checkout
 
-The user tested checkout **before** the Vercel deployment completed:
+`product_history_logs` shows TWO stok updates per checkout:
+1. **Before** `stock_logs.insert()` (~90ms earlier) — source unknown
+2. **After** `stock_logs.insert()` — from trigger (correct)
 
-1. User pushed commits but Vercel auto-deploy was broken (git remote lacked GitHub token → no webhook triggered).
-2. Fix was committed at 17:12:19 (`cea9309`) and 17:40:46 (`502ea0f`).
-3. Git remote was reconfigured with GitHub token → push triggered Vercel deployment at 17:40:53.
-4. User tested between 14:59–15:16 (before deployment), when the old code (direct `products.stok` update + trigger) was still live.
+Checked:
+- ✅ All triggers on `products`, `stock_logs`, `transactions` — only `handle_stock_log_change` updates stok
+- ✅ No PostgreSQL RULES on `products` table
+- ✅ No Supabase Edge Functions that update stok (only `gemini-proxy`)
+- ✅ No Realtime subscriptions / `supabase.channel()` calls
+- ✅ No `.from("products").update()` calls in Pos.jsx (all are `.select()`)
+- ✅ Vercel API routes only shipping-related (no payment webhooks)
 
-### Remaining Vulnerability: Double-Click Race Condition
+### CartComponent Crash Bug (Fixed)
 
-The `isSubmitting` guard in `processCheckout` uses `useState`, which is **asynchronous in React**. If the user double-clicks the "Bayar" button quickly:
+`isHolding` and `isSubmitting` were used in CartComponent buttons but NOT passed as props (neither destructured nor in `cartProps`). This caused `ReferenceError: isHolding is not defined` in production. Fixed by adding both to CartComponent props and `cartProps`. This was likely why Vercel wasn't actually deploying the fix — the old bundles didn't have this crash yet.
 
-```javascript
-// Line 840-841 (CURRENT — vulnerable)
-const processCheckout = async (isPaid) => {
-  if (isSubmitting) return;  // ← Race: both clicks see false before state updates
-  ...
-  setIsSubmitting(true);     // ← Async, doesn't prevent second call
-```
+### Debug Logs
 
-Both click handlers execute synchronously before React processes the state update, so both pass the guard and insert into `stock_logs` — each triggering the decrement, resulting in a **2x decrease** (identical to the original bug symptom).
+Added `console.log('[DEBUG]...')` to `processCheckout` in commit `a819f45`. User instructions: hard refresh, open Console (F12), perform checkout, check console output.
 
-**Fix**: Use `useRef` for synchronous guard, same pattern already used in `useAIPosAgent.js` (`processingRef`):
+### Root Cause Summary
 
-```javascript
-const isSubmittingRef = useRef(false);
-
-const processCheckout = async (isPaid) => {
-  if (isSubmittingRef.current) return;
-  isSubmittingRef.current = true;
-  ...
-  // Reset in finally block:
-  // isSubmittingRef.current = false;
-```
-
-### Secondary Issue: Product List Not Refreshed After Checkout
-
-When user clicks "OK" on the receipt confirm dialog (line 928-931), `resetPage()` is NOT called:
+Most likely: user's browser was caching old JS bundle, OR the Vercel auto-deploy wasn't working and the production alias was pointing to a pre-fix deployment. The fix is now deployed and the crash bug (missing props) is resolved.
 
 ```javascript
 if (window.confirm(successMsg + "\n\nApakah Anda ingin menampilkan struk?")) {

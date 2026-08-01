@@ -917,7 +917,6 @@ function Pos() {
       }
     }
 
-    console.log('[DEBUG] About to insert stock_logs', stockLogInserts);
     const stockLogInserts = cart.map((item) => ({
       product_id: item.id,
       perubahan: -item.quantity,
