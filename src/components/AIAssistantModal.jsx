@@ -18,6 +18,7 @@ function AIAssistantModal({
   const [logs, setLogs] = useState([]);
   const [ambiguousMatches, setAmbiguousMatches] = useState([]);
   const lastCommandRef = useRef("");
+  const lastCommandTimeRef = useRef(0);
   const isMountedRef = useRef(true);
   const scrollRef = useRef(null);
 
@@ -93,8 +94,13 @@ function AIAssistantModal({
     lang: "id-ID",
     onResult: (finalTranscript) => {
       setInputText(finalTranscript);
-      if (finalTranscript !== lastCommandRef.current) {
+      const now = Date.now();
+      if (
+        finalTranscript !== lastCommandRef.current &&
+        now - (lastCommandTimeRef.current || 0) > 1000
+      ) {
         lastCommandRef.current = finalTranscript;
+        lastCommandTimeRef.current = now;
         handleSubmitCommand(finalTranscript);
       }
     },

@@ -11,6 +11,7 @@ export function useAIPosAgent({
   ollamaUrl = "http://localhost:11434",
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const processingRef = useRef(false);
   const [error, setError] = useState(null);
   const [aiActions, setAiActions] = useState([]);
   const [activeProvider, setActiveProvider] = useState(null);
@@ -75,6 +76,8 @@ export function useAIPosAgent({
 
   const processCommand = useCallback(async (inputText) => {
     if (!inputText || !inputText.trim()) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
 
     const sanitizedInput = inputText.trim().slice(0, 200);
 
@@ -295,6 +298,7 @@ Contoh output:
       return null;
     } finally {
       setIsProcessing(false);
+      processingRef.current = false;
     }
   }, [aiProvider, ollamaUrl]);
 

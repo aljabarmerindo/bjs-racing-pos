@@ -21,6 +21,10 @@
 --     3. process_grosir_invoice (wholesale invoice creation)
 --     4. delete_transaction_and_restore_stock (transaction deletion)
 --
+--   NOTE: stok_dialokasikan (wholesale allocated stock) is NOT managed by
+--   the trigger. It is updated directly only in process_grosir_invoice,
+--   keeping wholesale allocation separate from retail stok management.
+--
 --   Keep all INSERT INTO stock_logs calls. The trigger handles the stock
 --   update as the single source of truth.
 --
@@ -172,6 +176,10 @@ $$;
 GRANT EXECUTE ON FUNCTION public.delete_transaction_and_restore_stock(uuid) TO anon, authenticated;
 
 -- 4. process_grosir_invoice: remove direct stok update, use stock_logs insert
+--    NOTE: stok_dialokasikan IS still updated directly in this function (not via
+--    trigger) because it represents wholesale-allocated stock, which is a separate
+--    concept from regular retail stok. Only regular stok is managed by the
+--    handle_stock_log_change trigger via stock_logs inserts.
 CREATE OR REPLACE FUNCTION public.process_grosir_invoice(p_sales_order_id uuid, p_customer_id uuid, p_invoice_number text, p_termin_pembayaran text, p_items jsonb)
 RETURNS uuid
 LANGUAGE plpgsql

@@ -646,7 +646,7 @@ function Pos() {
             const numVal = Number(value) || 1;
             if (numVal > item.stok) {
               uItem.quantity = item.stok;
-              alert("Kuantitas > stok.");
+              alert("Kuantitas melebihi stok yang tersedia di keranjang. Pastikan stok masih cukup sebelum checkout.");
             } else if (numVal <= 0) {
               uItem.quantity = 1;
             } else {
