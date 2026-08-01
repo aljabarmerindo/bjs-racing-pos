@@ -350,7 +350,7 @@ const CartComponent = ({
       <div className="mt-4 grid grid-cols-3 gap-2">
         <button
           onClick={handleHoldTransaction}
-          disabled={cart.length === 0}
+          disabled={cart.length === 0 || isHolding}
           className="w-full flex items-center justify-center gap-2 bg-slate-500 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-slate-400"
         >
           <FiSave /> Tahan
@@ -391,6 +391,7 @@ function Pos() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [cart, setCart] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isHolding, setIsHolding] = useState(false);
   const [subtotal, setSubtotal] = useState(0);
   const [totalDiscount, setTotalDiscount] = useState(0);
   const [finalTotal, setFinalTotal] = useState(0);
@@ -450,7 +451,7 @@ function Pos() {
       setFilteredProducts(data || []);
     }
     setLoadingProducts(false);
-  }, [selectedCustomer, debouncedProductSearch, activeFilters]);
+  }, [selectedCustomer, debouncedProductSearch, activeFilters, refreshTrigger]);
 
   useEffect(() => {
     fetchProducts();
@@ -837,6 +838,7 @@ function Pos() {
     forceRefresh();
   };
   const processCheckout = async (isPaid) => {
+    if (isSubmitting) return;
     const paid = parseFloat(cashPaid) || 0;
     if (isPaid && paid < finalTotal + shippingCost) {
       alert("Pembayaran kurang.");
@@ -877,16 +879,45 @@ function Pos() {
       return;
     }
 
+    const productIds = cart.map((i) => i.id);
+    const { data: currentProducts, error: stockCheckError } = await supabase
+      .from("products")
+      .select("id, nama, stok")
+      .in("id", productIds);
+
+    if (stockCheckError) {
+      alert("Gagal memverifikasi stok: " + stockCheckError.message);
+      setIsSubmitting(false);
+      return;
+    }
+
     for (const item of cart) {
-      await supabase
-        .from("products")
-        .update({ stok: item.stok - item.quantity })
-        .eq("id", item.id);
-      await supabase.from("stock_logs").insert({
-        product_id: item.id,
-        perubahan: -item.quantity,
-        keterangan: `Terjual via POS (Trx ID: ${newTransaction.id})`,
-      });
+      const currentProduct = currentProducts?.find((p) => p.id === item.id);
+      if (!currentProduct || item.quantity > currentProduct.stok) {
+        const productName = currentProduct?.nama || item.nama;
+        alert(
+          `Stok untuk produk "${productName}" tidak mencukupi. Tersedia: ${currentProduct?.stok || 0}, diminta: ${item.quantity}`,
+        );
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    const stockLogInserts = cart.map((item) => ({
+      product_id: item.id,
+      perubahan: -item.quantity,
+      keterangan: `Terjual via POS (Trx ID: ${newTransaction.id})`,
+    }));
+
+    const { error: stockLogError } = await supabase
+      .from("stock_logs")
+      .insert(stockLogInserts);
+
+    if (stockLogError) {
+      await supabase.from("transactions").delete().eq("id", newTransaction.id);
+      alert("Gagal mengurangi stok: " + stockLogError.message + "\nTransaksi telah dibatalkan.");
+      setIsSubmitting(false);
+      return;
     }
 
     setIsSubmitting(false);
@@ -908,6 +939,8 @@ function Pos() {
   };
   const handleHoldTransaction = async () => {
     if (cart.length === 0) return;
+    if (isHolding) return;
+    setIsHolding(true);
     const notes = prompt("Tambahkan catatan untuk transaksi ini (opsional):");
     if (notes === null) return;
     const { error } = await supabase
@@ -929,12 +962,50 @@ function Pos() {
     ) {
       return;
     }
-    setCart(
-      (heldTransaction.cart_data || []).map((i) => ({
-        ...i,
-        harga_jual_default: i.harga_jual_default ?? i.harga_jual,
-      })),
+    const heldCart = heldTransaction.cart_data || [];
+    const productIds = heldCart.map((i) => i.id).filter(Boolean);
+
+    const { data: freshProducts, error: fetchError } = await supabase
+      .from("products")
+      .select("id, nama, stok, harga_jual, harga_beli, harga_jual_default")
+      .in("id", productIds);
+
+    if (fetchError) {
+      alert("Gagal memverifikasi stok produk: " + fetchError.message);
+      return;
+    }
+
+    const freshProductMap = new Map(
+      (freshProducts || []).map((p) => [p.id, p]),
     );
+
+    const updatedCart = heldCart
+      .map((item) => {
+        const fresh = freshProductMap.get(item.id);
+        if (!fresh) {
+          alert(`Produk "${item.nama}" tidak ditemukan lagi.`);
+          return null;
+        }
+        if (item.quantity > fresh.stok) {
+          alert(
+            `Stok "${fresh.nama}" tidak mencukupi. Tersedia: ${fresh.stok}, diminta: ${item.quantity}`,
+          );
+          return null;
+        }
+        return {
+          ...item,
+          ...fresh,
+          quantity: item.quantity,
+          harga_jual_default: item.harga_jual_default ?? fresh.harga_jual,
+        };
+      })
+      .filter(Boolean);
+
+    if (updatedCart.length !== heldCart.length) {
+      return;
+    }
+
+    setCart(updatedCart);
     setSelectedCustomer(heldTransaction.customer_data || null);
     const { error } = await supabase
       .from("held_transactions")
@@ -947,6 +1018,7 @@ function Pos() {
     }
     setIsResumeModalOpen(false);
     forceRefresh();
+    setIsHolding(false);
   };
 
   const handleQuickFilterClick = (brand) => {

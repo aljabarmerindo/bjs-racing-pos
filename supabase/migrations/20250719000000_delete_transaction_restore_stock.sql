@@ -1,8 +1,12 @@
 -- Migration: delete_transaction_and_restore_stock
 -- Permanently deletes a transaction and restores the product stock that was
 -- deducted at the time of sale. SECURITY DEFINER so the anon key can perform
--- the write while bypassing RLS. Restoring stock also writes an audit row to
--- stock_logs.
+-- the write while bypassing RLS.
+--
+-- Stock restoration is handled by inserting a row into stock_logs with a
+-- positive perubahan; the handle_stock_log_change trigger on stock_logs
+-- updates products.stok automatically. We must NOT also directly UPDATE
+-- products.stok here, or the stock would be doubled.
 
 CREATE OR REPLACE FUNCTION public.delete_transaction_and_restore_stock(p_transaction_id uuid)
 RETURNS void
@@ -36,10 +40,6 @@ BEGIN
       );
 
       IF v_product_id IS NOT NULL AND v_qty > 0 THEN
-        UPDATE public.products
-        SET stok = stok + v_qty
-        WHERE id = v_product_id;
-
         INSERT INTO public.stock_logs (product_id, perubahan, keterangan)
         VALUES (
           v_product_id,
