@@ -1,5 +1,5 @@
 // src/pages/Pos.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../supabaseClient.js";
 import {
   FiSearch,
@@ -357,14 +357,14 @@ const CartComponent = ({
         </button>
         <button
           onClick={() => processCheckout(false)}
-          disabled={!selectedCustomer?.id || cart.length === 0}
+          disabled={!selectedCustomer?.id || cart.length === 0 || isSubmitting}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-slate-400"
         >
           Hutang
         </button>
         <button
           onClick={() => processCheckout(true)}
-          disabled={cart.length === 0 || parseFloat(cashPaid) < finalTotal + shippingCost}
+          disabled={cart.length === 0 || isSubmitting || parseFloat(cashPaid) < finalTotal + shippingCost}
           className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-slate-400"
         >
           Bayar
@@ -392,6 +392,7 @@ function Pos() {
   const [cart, setCart] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [subtotal, setSubtotal] = useState(0);
   const [totalDiscount, setTotalDiscount] = useState(0);
   const [finalTotal, setFinalTotal] = useState(0);
@@ -838,13 +839,14 @@ function Pos() {
     forceRefresh();
   };
   const processCheckout = async (isPaid) => {
-    if (isSubmitting) return;
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     const paid = parseFloat(cashPaid) || 0;
     if (isPaid && paid < finalTotal + shippingCost) {
+      isSubmittingRef.current = false;
       alert("Pembayaran kurang.");
       return;
     }
-    setIsSubmitting(true);
     let profit =
       cart.reduce((p, i) => p + (i.harga_jual - i.harga_beli) * i.quantity, 0) -
       totalDiscount;
@@ -875,6 +877,7 @@ function Pos() {
 
     if (error) {
       alert("Gagal menyimpan transaksi: " + error.message);
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       return;
     }
@@ -887,6 +890,7 @@ function Pos() {
 
     if (stockCheckError) {
       alert("Gagal memverifikasi stok: " + stockCheckError.message);
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       return;
     }
@@ -898,7 +902,8 @@ function Pos() {
         alert(
           `Stok untuk produk "${productName}" tidak mencukupi. Tersedia: ${currentProduct?.stok || 0}, diminta: ${item.quantity}`,
         );
-        setIsSubmitting(false);
+        isSubmittingRef.current = false;
+      setIsSubmitting(false);
         return;
       }
     }
@@ -916,10 +921,12 @@ function Pos() {
     if (stockLogError) {
       await supabase.from("transactions").delete().eq("id", newTransaction.id);
       alert("Gagal mengurangi stok: " + stockLogError.message + "\nTransaksi telah dibatalkan.");
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       return;
     }
 
+    isSubmittingRef.current = false;
     setIsSubmitting(false);
     const successMsg = isPaid
       ? `Transaksi Lunas! Kembalian: Rp ${new Intl.NumberFormat("id-ID").format(change)}`
@@ -929,6 +936,7 @@ function Pos() {
       window.confirm(successMsg + "\n\nApakah Anda ingin menampilkan struk?")
     ) {
       setReceiptData({ ...newTransaction, customer_data: selectedCustomer });
+      forceRefresh();
     } else {
       resetPage();
     }
