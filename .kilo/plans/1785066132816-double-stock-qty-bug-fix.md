@@ -240,7 +240,18 @@ Added `console.log('[DEBUG]...')` to `processCheckout` in commit `a819f45`. User
 
 ### Root Cause Summary
 
-Most likely: user's browser was caching old JS bundle, OR the Vercel auto-deploy wasn't working and the production alias was pointing to a pre-fix deployment. The fix is now deployed and the crash bug (missing props) is resolved.
+The double stock decrement was caused by two factors:
+
+1. **Browser cache** — The user's browser was serving a cached old JS bundle that contained `supabase.from("products").update({ stok: item.stok - item.quantity })` (direct stok update) in addition to the `stock_logs.insert()` call. The trigger `handle_stock_log_change` would then decrement stok again, resulting in a 2x decrease.
+
+2. **CartComponent crash bug** — `isHolding` and `isSubmitting` variables were used in CartComponent buttons but were not passed as props from the parent `Pos` component. This caused `ReferenceError: isHolding is not defined`, which may have prevented Vercel from successfully deploying the fix (the old bundle kept serving).
+
+### Resolution
+
+After fixing the CartComponent props and ensuring the browser loads the new bundle (hard refresh Ctrl+F5), the checkout works correctly:
+- `processCheckout` called **once**
+- `stock_logs.insert()` with **one** entry (`perubahan: -1`)
+- `products.stok` decreases by **exactly 1**
 
 ```javascript
 if (window.confirm(successMsg + "\n\nApakah Anda ingin menampilkan struk?")) {
