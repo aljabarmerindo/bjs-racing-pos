@@ -128,6 +128,18 @@ const DetailNotaPage = () => {
           .eq("id", invoiceId);
         if (invoiceError) throw invoiceError;
 
+        // Langkah baru: Update status TRANSACTIONS menjadi Lunas
+        // (transactions_list_view yang dipakai TransactionHistory didasarkan pada tabel transactions)
+        const { error: txError } = await supabase
+          .from("transactions")
+          .update({
+            status_pembayaran: "Lunas",
+            bayar: invoice.total_akhir,
+            sisa_hutang: 0,
+          })
+          .eq("invoice_number", invoice.invoice_number);
+        if (txError) throw txError;
+
         // Langkah 2: Update status SALES ORDER menjadi Selesai
         if (invoice.sales_order_id) {
           const { error: orderError } = await supabase
