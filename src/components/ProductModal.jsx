@@ -27,6 +27,7 @@ function ProductModal({
     nilai_konversi: "",
     ukuran: "",
     harga_grosir: "",
+    berat_gram: "",
     panjang_cm: "",
     lebar_cm: "",
     tinggi_cm: "",
@@ -57,6 +58,7 @@ function ProductModal({
           nilai_konversi: String(productToEdit.nilai_konversi || ""),
           ukuran: productToEdit.ukuran || "",
           harga_grosir: String(productToEdit.harga_grosir || ""),
+          berat_gram: productToEdit.berat_gram ? String(productToEdit.berat_gram) : "",
           panjang_cm: productToEdit.panjang_cm ? String(productToEdit.panjang_cm) : "",
           lebar_cm: productToEdit.lebar_cm ? String(productToEdit.lebar_cm) : "",
           tinggi_cm: productToEdit.tinggi_cm ? String(productToEdit.tinggi_cm) : "",
@@ -78,6 +80,7 @@ function ProductModal({
       "stok_min",
       "nilai_konversi",
       "harga_grosir",
+      "berat_gram",
     ];
     const decimalFields = ["panjang_cm", "lebar_cm", "tinggi_cm"];
     if (numericFields.includes(id)) {
@@ -102,6 +105,7 @@ function ProductModal({
       stok_min: Number(product.stok_min) || 0,
       nilai_konversi: Number(product.nilai_konversi) || 1,
       harga_grosir: Number(product.harga_grosir) || 0,
+      berat_gram: Number(product.berat_gram) || 500,
       panjang_cm: Number(product.panjang_cm) || 10,
       lebar_cm: Number(product.lebar_cm) || 10,
       tinggi_cm: Number(product.tinggi_cm) || 10,
@@ -296,9 +300,30 @@ function ProductModal({
               📦 Dimensi Pengiriman (cm)
             </h3>
             <p className="text-sm text-slate-500 mb-4">
-              Digunakan untuk kalkulasi ongkir Biteship (berat volumetrik).
+              Digunakan untuk kalkulasi ongkir Biteship (berat fisik & volumetrik).
               Kosongkan bila produk kecil — akan terisi default 10 cm.
             </p>
+            <div className="mb-4 max-w-xs">
+              <label
+                htmlFor="berat_gram"
+                className="block mb-1 text-sm font-medium text-slate-700"
+              >
+                Berat Pengiriman (gram)
+              </label>
+              <input
+                id="berat_gram"
+                type="text"
+                inputMode="numeric"
+                value={product.berat_gram}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+                placeholder="Cth: 400"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Berat kotor = isi + kemasan. Contoh: pilok 300ml ≈ 400g, oli 0,8L ≈ 750g.
+                Kosong = default 500g.
+              </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label
