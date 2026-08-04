@@ -27,6 +27,9 @@ function ProductModal({
     nilai_konversi: "",
     ukuran: "",
     harga_grosir: "",
+    panjang_cm: "",
+    lebar_cm: "",
+    tinggi_cm: "",
   };
 
   const [product, setProduct] = useState(initialProductState);
@@ -54,6 +57,9 @@ function ProductModal({
           nilai_konversi: String(productToEdit.nilai_konversi || ""),
           ukuran: productToEdit.ukuran || "",
           harga_grosir: String(productToEdit.harga_grosir || ""),
+          panjang_cm: productToEdit.panjang_cm ? String(productToEdit.panjang_cm) : "",
+          lebar_cm: productToEdit.lebar_cm ? String(productToEdit.lebar_cm) : "",
+          tinggi_cm: productToEdit.tinggi_cm ? String(productToEdit.tinggi_cm) : "",
         });
       } else {
         setProduct(initialProductState);
@@ -73,8 +79,14 @@ function ProductModal({
       "nilai_konversi",
       "harga_grosir",
     ];
+    const decimalFields = ["panjang_cm", "lebar_cm", "tinggi_cm"];
     if (numericFields.includes(id)) {
       setProduct((prev) => ({ ...prev, [id]: value.replace(/[^0-9]/g, "") }));
+    } else if (decimalFields.includes(id)) {
+      const sanitized = value.replace(/[^0-9.]/g, "");
+      const parts = sanitized.split(".");
+      const clean = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized;
+      setProduct((prev) => ({ ...prev, [id]: clean }));
     } else {
       setProduct((prev) => ({ ...prev, [id]: value }));
     }
@@ -90,6 +102,9 @@ function ProductModal({
       stok_min: Number(product.stok_min) || 0,
       nilai_konversi: Number(product.nilai_konversi) || 1,
       harga_grosir: Number(product.harga_grosir) || 0,
+      panjang_cm: Number(product.panjang_cm) || 10,
+      lebar_cm: Number(product.lebar_cm) || 10,
+      tinggi_cm: Number(product.tinggi_cm) || 10,
     };
     onSave(finalProduct);
   };
@@ -272,6 +287,68 @@ function ProductModal({
                   onChange={handleChange}
                   className="w-full p-2 border rounded"
                   placeholder="Cth: 12"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 pt-4 border-t">
+            <h3 className="text-lg font-semibold mb-2 text-slate-800">
+              📦 Dimensi Pengiriman (cm)
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Digunakan untuk kalkulasi ongkir Biteship (berat volumetrik).
+              Kosongkan bila produk kecil — akan terisi default 10 cm.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label
+                  htmlFor="panjang_cm"
+                  className="block mb-1 text-sm font-medium text-slate-700"
+                >
+                  Panjang (cm)
+                </label>
+                <input
+                  id="panjang_cm"
+                  type="text"
+                  inputMode="decimal"
+                  value={product.panjang_cm}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  placeholder="Cth: 10"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="lebar_cm"
+                  className="block mb-1 text-sm font-medium text-slate-700"
+                >
+                  Lebar (cm)
+                </label>
+                <input
+                  id="lebar_cm"
+                  type="text"
+                  inputMode="decimal"
+                  value={product.lebar_cm}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  placeholder="Cth: 10"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="tinggi_cm"
+                  className="block mb-1 text-sm font-medium text-slate-700"
+                >
+                  Tinggi (cm)
+                </label>
+                <input
+                  id="tinggi_cm"
+                  type="text"
+                  inputMode="decimal"
+                  value={product.tinggi_cm}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  placeholder="Cth: 10"
                 />
               </div>
             </div>
