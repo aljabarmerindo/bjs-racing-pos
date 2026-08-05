@@ -18,6 +18,7 @@ function ProductModal({
     supplier: "",
     harga_beli: "",
     harga_jual: "",
+    harga_coret: "",
     stok: "",
     stok_min: "",
     catatan: "",
@@ -49,6 +50,9 @@ function ProductModal({
           supplier: productToEdit.supplier || "",
           harga_beli: String(productToEdit.harga_beli || ""),
           harga_jual: String(productToEdit.harga_jual || ""),
+          harga_coret: productToEdit.harga_coret
+            ? String(productToEdit.harga_coret)
+            : "",
           stok: String(productToEdit.stok || ""),
           stok_min: String(productToEdit.stok_min || ""),
           catatan: productToEdit.catatan || "",
@@ -76,6 +80,7 @@ function ProductModal({
     const numericFields = [
       "harga_beli",
       "harga_jual",
+      "harga_coret",
       "stok",
       "stok_min",
       "nilai_konversi",
@@ -101,6 +106,9 @@ function ProductModal({
       ...product,
       harga_beli: Number(product.harga_beli) || 0,
       harga_jual: Number(product.harga_jual) || 0,
+      harga_coret: product.harga_coret
+        ? Number(product.harga_coret)
+        : null,
       stok: Number(product.stok) || 0,
       stok_min: Number(product.stok_min) || 0,
       nilai_konversi: Number(product.nilai_konversi) || 1,
@@ -112,6 +120,26 @@ function ProductModal({
     };
     onSave(finalProduct);
   };
+
+  const applyDiscountPreset = (pct) => {
+    if (saveError) setSaveError("");
+    const jual = Number(product.harga_jual) || 0;
+    if (jual <= 0) {
+      setSaveError(
+        "Isi Harga Jual terlebih dahulu sebelum memilih preset diskon.",
+      );
+      return;
+    }
+    const coret = Math.round(jual / (1 - pct / 100));
+    setProduct((prev) => ({ ...prev, harga_coret: String(coret) }));
+  };
+
+  const jualNum = Number(product.harga_jual) || 0;
+  const coretNum = Number(product.harga_coret) || 0;
+  const hasValidDiscount = coretNum > jualNum && jualNum > 0;
+  const diskonPreviewPct = hasValidDiscount
+    ? Math.round(((coretNum - jualNum) / coretNum) * 100)
+    : 0;
 
   const handleClose = () => {
     if (saveError) setSaveError("");
@@ -456,6 +484,70 @@ function ProductModal({
                   className="w-full p-2 border rounded"
                   required
                 />
+              </div>
+              <div>
+                <label
+                  htmlFor="harga_coret"
+                  className="block mb-1 text-sm font-medium text-slate-700"
+                >
+                  Harga Coret / Harga Normal Sebelum Diskon (Rp)
+                </label>
+                <input
+                  id="harga_coret"
+                  type="text"
+                  inputMode="numeric"
+                  value={
+                    product.harga_coret
+                      ? new Intl.NumberFormat("id-ID").format(
+                          product.harga_coret,
+                        )
+                      : ""
+                  }
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  placeholder="Kosongkan bila tanpa diskon"
+                />
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-slate-500">
+                    Preset diskon %:
+                  </span>
+                  {[5, 10, 15, 20, 25].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => applyDiscountPreset(pct)}
+                      className="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-600 hover:bg-orange-500 hover:text-white border border-orange-200"
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                  {product.harga_coret && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setProduct((prev) => ({
+                          ...prev,
+                          harga_coret: "",
+                        }))
+                      }
+                      className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-600 hover:bg-red-500 hover:text-white border border-red-200"
+                    >
+                      Hapus Diskon
+                    </button>
+                  )}
+                </div>
+                {hasValidDiscount && (
+                  <p className="text-sm text-emerald-600 font-semibold mt-2">
+                    Diskon {diskonPreviewPct}% — coret{" "}
+                    {new Intl.NumberFormat("id-ID").format(coretNum)}, jual{" "}
+                    {new Intl.NumberFormat("id-ID").format(jualNum)}
+                  </p>
+                )}
+                {product.harga_coret && !hasValidDiscount && jualNum > 0 && (
+                  <p className="text-sm text-red-600 mt-2">
+                    Harga coret harus lebih besar dari harga jual.
+                  </p>
+                )}
               </div>
               <div>
                 <label
