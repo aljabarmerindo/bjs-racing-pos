@@ -38,6 +38,7 @@ import Brands from "./pages/Brands.jsx";
 import FlashSales from "./pages/FlashSales.jsx";
 import GojekAreas from "./pages/GojekAreas.jsx";
 import BjsExpressAreas from "./pages/BjsExpressAreas.jsx";
+import VideoListPage from "./pages/VideoListPage.jsx";
 
 
 
@@ -175,6 +176,7 @@ function App() {
             <Route path="histori-stok" element={<StockHistory />} />
             <Route path="manajemen-ai" element={<ManajemenModelAI />} />
             <Route path="manajemen-margin" element={<ManajemenMargin />} />
+            <Route path="manajemen-video" element={<VideoListPage />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
         </>

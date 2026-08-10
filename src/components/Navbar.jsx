@@ -22,6 +22,7 @@ import {
   FiAward,
   FiZap,
   FiMapPin,
+  FiPlay,
 } from "react-icons/fi";
 import { supabase } from "../supabaseClient.js";
 
@@ -102,6 +103,7 @@ function Navbar({ isOpen, onLinkClick }) {
     { name: "Riwayat Stok", path: "/histori-stok", icon: <FiClipboard /> },
     { name: "Manajemen AI", path: "/manajemen-ai", icon: <FiCpu /> },
     { name: "Pengaturan Margin", path: "/manajemen-margin", icon: <FiPercent /> },
+    { name: "Manajemen Video", path: "/manajemen-video", icon: <FiPlay /> },
   ];
 
   const handleLogout = async () => {
