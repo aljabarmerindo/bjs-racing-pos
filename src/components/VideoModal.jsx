@@ -1,6 +1,26 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 
+function extractYouTubeId(input) {
+  if (!input || typeof input !== "string") return "";
+  const trimmed = input.trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname.includes("youtu.be")) {
+      return url.pathname.slice(1).split("/")[0] || "";
+    }
+    if (url.hostname.includes("youtube.com")) {
+      if (url.searchParams.get("v")) return url.searchParams.get("v");
+      const parts = url.pathname.split("/");
+      if (parts[1] === "embed" || parts[1] === "v") return parts[2] || "";
+    }
+  } catch {
+    // not a valid URL, ignore
+  }
+  return trimmed;
+}
+
 function VideoModal({ isOpen, onClose, onSave, videoToEdit }) {
   const [video, setVideo] = useState({
     youtube_video_id: "",
@@ -32,6 +52,14 @@ function VideoModal({ isOpen, onClose, onSave, videoToEdit }) {
 
   const handleChange = (e) => {
     const { id, value, type, checked } = e.target;
+    if (id === "youtube_video_id") {
+      const extracted = extractYouTubeId(value);
+      setVideo((prev) => ({
+        ...prev,
+        youtube_video_id: extracted || value,
+      }));
+      return;
+    }
     setVideo((prev) => ({
       ...prev,
       [id]: type === "checkbox" ? checked : type === "number" ? Number(value) : value,
@@ -68,7 +96,7 @@ function VideoModal({ isOpen, onClose, onSave, videoToEdit }) {
                 placeholder="Contoh: gXK47ZXUudw"
               />
               <p className="text-xs text-slate-400 mt-1">
-                Ambil dari URL YouTube: https://www.youtube.com/watch?v=<strong>gXK47ZXUudw</strong>
+                Bisa paste URL YouTube: https://www.youtube.com/watch?v=<strong>gXK47ZXUudw</strong>
               </p>
             </div>
 
