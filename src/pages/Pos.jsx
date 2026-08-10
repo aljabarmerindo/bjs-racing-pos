@@ -980,7 +980,7 @@ function Pos() {
 
     const { data: freshProducts, error: fetchError } = await supabase
       .from("products")
-      .select("id, nama, stok, harga_jual, harga_beli, harga_jual_default")
+      .select("id, nama, stok, harga_jual, harga_beli")
       .in("id", productIds);
 
     if (fetchError) {
