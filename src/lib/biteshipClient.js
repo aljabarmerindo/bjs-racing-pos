@@ -1,12 +1,15 @@
 const getApiBase = () => {
-  if (typeof window !== "undefined" && window.location.hostname.includes("vercel.app")) {
-    return window.location.origin;
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname.includes("vercel.app") || hostname.includes("bjsracing.com")) {
+      return window.location.origin;
+    }
+    if (window.__API_BASE__) {
+      return window.__API_BASE__;
+    }
   }
   if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
-  }
-  if (typeof window !== "undefined" && window.__API_BASE__) {
-    return window.__API_BASE__;
   }
   return "http://localhost:3001";
 };
