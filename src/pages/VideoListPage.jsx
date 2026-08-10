@@ -169,7 +169,7 @@ const VideoListPage = () => {
                 <tr key={video.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <img
-                      src={`https://img.youtube.com/vi/${video.youtube_video_id}/mqdefault.jpg`}
+                      src={`https://i.ytimg.com/vi/${video.youtube_video_id}/mqdefault.jpg`}
                       alt={video.title}
                       className="w-24 h-16 object-cover rounded border"
                     />
@@ -224,7 +224,7 @@ const VideoListPage = () => {
             <div key={video.id} className="bg-white rounded-lg shadow p-4">
               <div className="flex gap-3">
                 <img
-                  src={`https://img.youtube.com/vi/${video.youtube_video_id}/mqdefault.jpg`}
+                  src={`https://i.ytimg.com/vi/${video.youtube_video_id}/mqdefault.jpg`}
                   alt={video.title}
                   className="w-24 h-16 object-cover rounded border flex-shrink-0"
                 />
