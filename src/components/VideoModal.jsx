@@ -33,6 +33,7 @@ function VideoModal({ isOpen, onClose, onSave, videoToEdit }) {
   useEffect(() => {
     if (videoToEdit) {
       setVideo({
+        id: videoToEdit.id,
         youtube_video_id: videoToEdit.youtube_video_id || "",
         title: videoToEdit.title || "",
         product_name: videoToEdit.product_name || "",
