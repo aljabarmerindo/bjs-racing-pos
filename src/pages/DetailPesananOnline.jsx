@@ -188,7 +188,7 @@ export default function DetailPesananOnlinePage() {
         .eq("order_id", orderId);
 
       if (orderItems && orderItems.length > 0) {
-        const saleLogs = orderItems.map((item: any) => ({
+        const saleLogs = orderItems.map((item) => ({
           product_id: item.product_id,
           perubahan: -item.quantity,
           keterangan: `Penjualan Dikonfirmasi - Order #${order.order_number}`,
