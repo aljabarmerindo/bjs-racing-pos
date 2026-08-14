@@ -917,6 +917,7 @@ function Pos() {
       product_id: item.id,
       perubahan: -item.quantity,
       keterangan: `Terjual via POS (Trx ID: ${newTransaction.id})`,
+      type: 'sale',
     }));
 
     const { error: stockLogError } = await supabase

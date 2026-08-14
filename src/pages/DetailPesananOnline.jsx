@@ -177,10 +177,36 @@ export default function DetailPesananOnlinePage() {
 
     if (error) {
       alert("Gagal memperbarui pesanan: " + error.message);
-    } else {
-      alert("Pesanan berhasil diperbarui!");
-      fetchOrderDetails(); // Muat ulang data untuk menampilkan perubahan
+      setIsSaving(false);
+      return;
     }
+
+    if (newStatus === "completed" && order?.status !== "completed") {
+      const { data: orderItems } = await supabase
+        .from("order_items")
+        .select("product_id, quantity")
+        .eq("order_id", orderId);
+
+      if (orderItems && orderItems.length > 0) {
+        const saleLogs = orderItems.map((item: any) => ({
+          product_id: item.product_id,
+          perubahan: -item.quantity,
+          keterangan: `Penjualan Dikonfirmasi - Order #${order.order_number}`,
+          type: 'sale',
+        }));
+
+        const { error: logError } = await supabase
+          .from("stock_logs")
+          .insert(saleLogs);
+
+        if (logError) {
+          console.error("Gagal mencatat stock log untuk delivery:", logError);
+        }
+      }
+    }
+
+    alert("Pesanan berhasil diperbarui!");
+    fetchOrderDetails(); // Muat ulang data untuk menampilkan perubahan
     setIsSaving(false);
   };
 
