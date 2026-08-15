@@ -24,30 +24,49 @@ export default function ManajemenKategori() {
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: productData, error: productError } = await supabase
-        .from("products")
-        .select("kategori")
-        .not("kategori", "in", '("Pilok", "Jasa")')
-        .not("kategori", "is", null)
-        .order("kategori", { ascending: true });
+      // Ambil SEMUA kategori unik dari produk dengan PAGINATION
+      // (PostgREST membatasi 1000 baris/request; tanpa pagination kategori
+      // dengan produk di urutan abjad akhir tidak akan terdaftar).
+      const PAGE = 1000;
+      let from = 0;
+      const allCategories = new Set();
+      while (true) {
+        let productQuery = supabase
+          .from("products")
+          .select("kategori")
+          .not("kategori", "in", '("Pilok", "Jasa")')
+          .not("kategori", "is", null)
+          .range(from, from + PAGE - 1);
 
-      if (productError) throw productError;
+        const { data: productPage, error: pageError } = await productQuery;
+        if (pageError) throw pageError;
 
-      const uniqueCategories = [...new Set((productData || []).map(p => p.kategori))];
+        if (!productPage || productPage.length === 0) break;
+        productPage.forEach(p => {
+          if (p.kategori !== null && p.kategori !== undefined) {
+            allCategories.add(p.kategori);
+          }
+        });
+        if (productPage.length < PAGE) break;
+        from += PAGE;
+      }
 
-      // Ambil SEMUA baris product_categories (hindari .in() besar)
+      // Ambil SEMUA baris product_categories (sumber status visibilitas)
       const { data: categoryData, error: catError } = await supabase
         .from("product_categories")
-        .select("kategori, is_active");
+        .select("kategori, is_active")
+        .order("kategori", { ascending: true });
       if (catError) throw catError;
 
       const statusMap = new Map();
       (categoryData || []).forEach(row => statusMap.set(row.kategori, row.is_active));
 
-      const merged = uniqueCategories.map(kategori => ({
-        kategori,
-        is_active: statusMap.has(kategori) ? statusMap.get(kategori) : true,
-      }));
+      const merged = [...allCategories]
+        .map(kategori => ({
+          kategori,
+          is_active: statusMap.has(kategori) ? statusMap.get(kategori) : true,
+        }))
+        .sort((a, b) => a.kategori.localeCompare(b.kategori));
 
       // Seed kategori yang belum terdaftar (default aktif) agar visibilitas
       // di /onderdil konsisten dengan halaman ini

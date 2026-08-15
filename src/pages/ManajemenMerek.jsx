@@ -37,29 +37,42 @@ export default function ManajemenMerek() {
   const fetchMereks = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: productData, error: productError } = await supabase
-        .from("products")
-        .select("merek");
+      // Ambil SEMUA merek unik (ternormalisasi) dari produk dengan PAGINATION
+      // (PostgREST membatasi 1000 baris/request; tanpa pagination banyak merek
+      // tidak akan terdaftar dan tak bisa diatur visibilitasnya).
+      const PAGE = 1000;
+      let from = 0;
+      const allMereks = new Set();
+      while (true) {
+        const { data: productPage, error: pageError } = await supabase
+          .from("products")
+          .select("merek")
+          .range(from, from + PAGE - 1);
 
-      if (productError) throw productError;
+        if (pageError) throw pageError;
 
-      const uniqueMereks = [
-        ...new Set((productData || []).map(p => normalizeMerek(p.merek))),
-      ].sort();
+        if (!productPage || productPage.length === 0) break;
+        productPage.forEach(p => allMereks.add(normalizeMerek(p.merek)));
+        if (productPage.length < PAGE) break;
+        from += PAGE;
+      }
 
-      // Ambil SEMUA baris product_mereks
+      // Ambil SEMUA baris product_mereks (sumber status visibilitas)
       const { data: merekData, error: merekError } = await supabase
         .from("product_mereks")
-        .select("merek, is_active");
+        .select("merek, is_active")
+        .order("merek", { ascending: true });
       if (merekError) throw merekError;
 
       const statusMap = new Map();
       (merekData || []).forEach(row => statusMap.set(row.merek, row.is_active));
 
-      const merged = uniqueMereks.map(merek => ({
-        merek,
-        is_active: statusMap.has(merek) ? statusMap.get(merek) : true,
-      }));
+      const merged = [...allMereks]
+        .map(merek => ({
+          merek,
+          is_active: statusMap.has(merek) ? statusMap.get(merek) : true,
+        }))
+        .sort((a, b) => a.merek.localeCompare(b.merek));
 
       // Seed merek yang belum terdaftar (default aktif)
       const missing = merged.filter(m => !statusMap.has(m.merek));
