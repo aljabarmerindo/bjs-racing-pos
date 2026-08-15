@@ -1,5 +1,6 @@
 // File: api/couriers.js
 // Vercel Serverless Function — CRUD data kurir internal BJS Express.
+// Menangani /api/couriers (GET, POST) dan /api/couriers/:id (PUT, DELETE).
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -10,6 +11,19 @@ const supabase = createClient(
 export default function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
+  const id = extractId(req.url);
+
+  if (id) {
+    if (req.method === "PUT") {
+      return handlePut(req, res, id);
+    }
+    if (req.method === "DELETE") {
+      return handleDelete(req, res, id);
+    }
+    res.setHeader("Allow", "PUT, DELETE");
+    return res.status(405).json({ message: "Method Not Allowed" });
+  }
+
   if (req.method === "GET") {
     return handleGet(req, res);
   }
@@ -18,6 +32,13 @@ export default function handler(req, res) {
   }
   res.setHeader("Allow", "GET, POST");
   return res.status(405).json({ message: "Method Not Allowed" });
+}
+
+function extractId(url) {
+  const match = String(url || "").match(/\/api\/couriers\/([^/?]+)/);
+  if (!match) return null;
+  const id = decodeURIComponent(match[1]);
+  return id && !Array.isArray(id) ? id : null;
 }
 
 async function handleGet(req, res) {
@@ -94,5 +115,50 @@ async function handlePost(req, res) {
   } catch (err) {
     console.error("Courier create error:", err);
     res.status(500).json({ message: "Gagal menambah kurir.", details: err.message });
+  }
+}
+
+async function handlePut(req, res, id) {
+  try {
+    const { name, phone, plate_number, vehicle_type, is_active } = req.body;
+    if (!name) {
+      return res.status(400).json({ message: "Nama kurir wajib diisi." });
+    }
+
+    const { data, error } = await supabase
+      .from("couriers")
+      .update({
+        name,
+        phone: phone || null,
+        plate_number: plate_number || null,
+        vehicle_type: vehicle_type || "motor",
+        is_active: is_active ?? true,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Courier update error:", error);
+      return res.status(500).json({ message: "Gagal memperbarui kurir.", details: error.message });
+    }
+    res.status(200).json(data);
+  } catch (err) {
+    console.error("Courier update error:", err);
+    res.status(500).json({ message: "Gagal memperbarui kurir.", details: err.message });
+  }
+}
+
+async function handleDelete(req, res, id) {
+  try {
+    const { error } = await supabase.from("couriers").delete().eq("id", id);
+    if (error) {
+      console.error("Courier delete error:", error);
+      return res.status(500).json({ message: "Gagal menghapus kurir.", details: error.message });
+    }
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Courier delete error:", err);
+    res.status(500).json({ message: "Gagal menghapus kurir.", details: err.message });
   }
 }
