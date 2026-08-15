@@ -125,3 +125,57 @@ export async function getCourierConfig() {
   if (!res.ok) throw new Error("Gagal memuat konfigurasi kurir.");
   return res.json();
 }
+
+export async function getCouriers() {
+  const res = await fetch(`${API_BASE}/api/couriers`);
+  if (!res.ok) throw new Error("Gagal memuat data kurir.");
+  return res.json();
+}
+
+export async function createCourier(payload) {
+  const res = await fetch(`${API_BASE}/api/couriers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal menambah kurir. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}
+
+export async function updateCourier(id, payload) {
+  const res = await fetch(`${API_BASE}/api/couriers/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal memperbarui kurir. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}
+
+export async function deleteCourier(id) {
+  const res = await fetch(`${API_BASE}/api/couriers/${id}`, {
+    method: "DELETE",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal menghapus kurir. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}
+
+export async function getBjsExpressOrders(status = "paid,shipped") {
+  const res = await fetch(`${API_BASE}/api/bjs-express/orders?status=${encodeURIComponent(status)}`);
+  if (!res.ok) throw new Error("Gagal memuat pesanan BJS Express.");
+  return res.json();
+}
+
+export async function assignCourierToOrder(payload) {
+  const res = await fetch(`${API_BASE}/api/bjs-express/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal menugaskan kurir. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}

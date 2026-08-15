@@ -39,7 +39,7 @@ import PromoBanners from "./pages/PromoBanners.jsx";
 import Brands from "./pages/Brands.jsx";
 import FlashSales from "./pages/FlashSales.jsx";
 import GojekAreas from "./pages/GojekAreas.jsx";
-import BjsExpressAreas from "./pages/BjsExpressAreas.jsx";
+import BjsExpressModule from "./pages/BjsExpressModule.jsx";
 import VideoListPage from "./pages/VideoListPage.jsx";
 
 
@@ -138,7 +138,8 @@ function App() {
             <Route path="/manajemen-brand" element={<Brands />} />
             <Route path="/manajemen-flash-sale" element={<FlashSales />} />
             <Route path="/manajemen-gojek-areas" element={<GojekAreas />} />
-            <Route path="/manajemen-bjs-express-area" element={<BjsExpressAreas />} />
+            <Route path="/manajemen-bjs-express-area" element={<Navigate to="/bjs-express" replace />} />
+            <Route path="/bjs-express" element={<BjsExpressModule />} />
             <Route path="penjualan-grosir">
               <Route index element={<PenjualanGrosir />} />
               <Route path="baru" element={<FormPesananGrosir />} />

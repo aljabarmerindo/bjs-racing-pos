@@ -23,7 +23,7 @@ export default function handler(req, res) {
 
 async function handlePut(req, res, id) {
   try {
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name } = req.body;
 
     const { data, error } = await supabase
       .from("bjs_express_areas")
@@ -36,7 +36,11 @@ async function handlePut(req, res, id) {
         is_active, 
         notes,
         open_time: open_time || "08:00:00",
-        cutoff_time: cutoff_time || "15:00:00"
+        cutoff_time: cutoff_time || "15:00:00",
+        shipping_cost: Number(shipping_cost) || 0,
+        etd: etd || "6 - 8 Hours",
+        max_weight_gram: Number(max_weight_gram) || 5000,
+        service_name: service_name || "BJS Express",
       })
       .eq("id", id)
       .select()

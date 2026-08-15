@@ -277,7 +277,7 @@ app.get("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
 
 app.post("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
   try {
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name } = req.body;
     if (!district_name || !city_name || !province_name || !postal_code) {
       return res.status(400).json({ message: "Field wajib tidak lengkap." });
     }
@@ -292,6 +292,12 @@ app.post("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
         postal_code: String(postal_code),
         is_active,
         notes: notes || null,
+        open_time: open_time || "08:00:00",
+        cutoff_time: cutoff_time || "15:00:00",
+        shipping_cost: Number(shipping_cost) || 0,
+        etd: etd || "6 - 8 Hours",
+        max_weight_gram: Number(max_weight_gram) || 5000,
+        service_name: service_name || "BJS Express",
       })
       .select()
       .single();
@@ -307,11 +313,25 @@ app.post("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
 app.put("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name } = req.body;
 
     const { data, error } = await supabase
       .from("bjs_express_areas")
-      .update({ subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes })
+      .update({
+        subdistrict_id,
+        district_name,
+        city_name,
+        province_name,
+        postal_code,
+        is_active,
+        notes,
+        open_time: open_time || "08:00:00",
+        cutoff_time: cutoff_time || "15:00:00",
+        shipping_cost: Number(shipping_cost) || 0,
+        etd: etd || "6 - 8 Hours",
+        max_weight_gram: Number(max_weight_gram) || 5000,
+        service_name: service_name || "BJS Express",
+      })
       .eq("id", id)
       .select()
       .single();
@@ -337,6 +357,223 @@ app.delete("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
   } catch (err) {
     console.error("BJS Express area delete error:", err);
     res.status(500).json({ message: "Gagal menghapus area BJS Express." });
+  }
+});
+
+// Data kurir internal (mirror dari api/couriers.js & api/couriers/[id].js)
+app.get("/api/couriers", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("couriers")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error("Couriers list error:", err);
+    res.status(500).json({ message: "Gagal memuat data kurir." });
+  }
+});
+
+app.post("/api/couriers", async (req, res) => {
+  try {
+    const { email, password, name, phone, plate_number, vehicle_type, is_active } = req.body;
+    if (!name) {
+      return res.status(400).json({ message: "Nama kurir wajib diisi." });
+    }
+
+    let userId = null;
+    if (email) {
+      if (!password) {
+        return res.status(400).json({ message: "Password wajib diisi saat membuat akun login." });
+      }
+      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+      if (authError) throw authError;
+      userId = authUser.user.id;
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert({ id: userId, role: "courier" }, { onConflict: "id" });
+      if (profileError) throw profileError;
+    }
+
+    const { data, error } = await supabase
+      .from("couriers")
+      .insert({
+        user_id: userId,
+        name,
+        phone: phone || null,
+        plate_number: plate_number || null,
+        vehicle_type: vehicle_type || "motor",
+        is_active: is_active ?? true,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("Courier create error:", err);
+    res.status(500).json({ message: "Gagal menambah kurir.", details: err.message });
+  }
+});
+
+app.put("/api/couriers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, plate_number, vehicle_type, is_active } = req.body;
+    if (!name) {
+      return res.status(400).json({ message: "Nama kurir wajib diisi." });
+    }
+    const { data, error } = await supabase
+      .from("couriers")
+      .update({
+        name,
+        phone: phone || null,
+        plate_number: plate_number || null,
+        vehicle_type: vehicle_type || "motor",
+        is_active: is_active ?? true,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("Courier update error:", err);
+    res.status(500).json({ message: "Gagal memperbarui kurir." });
+  }
+});
+
+app.delete("/api/couriers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from("couriers").delete().eq("id", id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Courier delete error:", err);
+    res.status(500).json({ message: "Gagal menghapus kurir." });
+  }
+});
+
+// Daftar pesanan BJS Express untuk tab Penugasan (mirror dari api/bjs-express/orders.js)
+app.get("/api/bjs-express/orders", async (req, res) => {
+  try {
+    const status = String(req.query.status || "paid,shipped")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    let query = supabase
+      .from("orders")
+      .select(`
+        id,
+        order_number,
+        status,
+        created_at,
+        total_amount,
+        shipping_cost,
+        courier_details,
+        shipping_address,
+        customer_id,
+        customers (id, nama_pelanggan, telepon),
+        courier_assignments (id, status, notes, photo_url, completed_at, couriers (id, name, phone))
+      `)
+      .eq("courier_details->>code", "internal")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (status.length > 0) {
+      query = query.in("status", status);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error("BJS Express orders error:", err);
+    res.status(500).json({ message: "Gagal memuat pesanan BJS Express." });
+  }
+});
+
+// Penugasan kurir (mirror dari api/bjs-express/assign.js)
+app.post("/api/bjs-express/assign", async (req, res) => {
+  try {
+    const { order_id, courier_id, notes } = req.body;
+    if (!order_id || !courier_id) {
+      return res.status(400).json({ message: "order_id dan courier_id wajib diisi." });
+    }
+
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("id, status, courier_details, order_number")
+      .eq("id", order_id)
+      .single();
+    if (orderError || !order) {
+      return res.status(404).json({ message: "Pesanan tidak ditemukan." });
+    }
+
+    const courierCode = String(order.courier_details?.code || "").toLowerCase();
+    if (courierCode !== "internal") {
+      return res.status(400).json({ message: "Pesanan ini bukan kurir internal BJS Express." });
+    }
+
+    const { data: courier, error: courierError } = await supabase
+      .from("couriers")
+      .select("id, name, is_active")
+      .eq("id", courier_id)
+      .maybeSingle();
+    if (courierError || !courier || !courier.is_active) {
+      return res.status(400).json({ message: "Kurir tidak ditemukan atau nonaktif." });
+    }
+
+    const { data: assignment, error: assignError } = await supabase
+      .from("courier_assignments")
+      .upsert(
+        {
+          order_id,
+          courier_id,
+          notes: notes || null,
+          status: "assigned",
+          assigned_at: new Date().toISOString(),
+          photo_url: null,
+          completed_at: null,
+        },
+        { onConflict: "order_id" },
+      )
+      .select()
+      .single();
+    if (assignError) throw assignError;
+
+    await supabase.from("courier_assignment_events").insert({
+      assignment_id: assignment.id,
+      status: "assigned",
+      note: notes || null,
+    });
+
+    const cd = order.courier_details || {};
+    const { error: updateError } = await supabase
+      .from("orders")
+      .update({
+        status: "shipped",
+        courier_details: {
+          ...cd,
+          shipping_status: "assigned",
+          courier_name: courier.name,
+          courier_id,
+        },
+      })
+      .eq("id", order_id);
+    if (updateError) throw updateError;
+
+    res.json({ success: true, assignment, message: `Pesanan #${order.order_number} ditugaskan ke ${courier.name}.` });
+  } catch (err) {
+    console.error("BJS Express assign error:", err);
+    res.status(500).json({ message: "Gagal menugaskan kurir.", details: err.message });
   }
 });
 

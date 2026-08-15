@@ -65,8 +65,8 @@ function Navbar({ isOpen, onLinkClick }) {
       icon: <FiMapPin />,
     },
     {
-      name: "BJS Express Area",
-      path: "/manajemen-bjs-express-area",
+      name: "BJS Express",
+      path: "/bjs-express",
       icon: <FiTruck />,
     },
     {

@@ -18,6 +18,10 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
     notes: "",
     open_time: "08:00",
     cutoff_time: "15:00",
+    shipping_cost: "0",
+    etd: "6 - 8 Hours",
+    max_weight_gram: "5000",
+    service_name: "BJS Express",
   });
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -37,6 +41,10 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         notes: areaToEdit.notes || "",
         open_time: areaToEdit.open_time || "08:00",
         cutoff_time: areaToEdit.cutoff_time || "15:00",
+        shipping_cost: areaToEdit.shipping_cost ?? "0",
+        etd: areaToEdit.etd || "6 - 8 Hours",
+        max_weight_gram: areaToEdit.max_weight_gram ?? "5000",
+        service_name: areaToEdit.service_name || "BJS Express",
       });
       setSelected(null);
       setQuery("");
@@ -52,6 +60,10 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         notes: "",
         open_time: "08:00",
         cutoff_time: "15:00",
+        shipping_cost: "0",
+        etd: "6 - 8 Hours",
+        max_weight_gram: "5000",
+        service_name: "BJS Express",
       });
       setSelected(null);
       setQuery("");
@@ -86,6 +98,10 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
       notes: form.notes,
       open_time: form.open_time,
       cutoff_time: form.cutoff_time,
+      shipping_cost: form.shipping_cost,
+      etd: form.etd,
+      max_weight_gram: form.max_weight_gram,
+      service_name: form.service_name,
     });
   };
 
@@ -268,6 +284,60 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 required
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Nama Layanan
+              </label>
+              <input
+                type="text"
+                value={form.service_name}
+                onChange={(e) => setForm({ ...form, service_name: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Ongkir Flat (Rp)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={form.shipping_cost}
+                onChange={(e) => setForm({ ...form, shipping_cost: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+                required
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                0 = gratis ongkir
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Estimasi Pengiriman (ETD)
+              </label>
+              <input
+                type="text"
+                value={form.etd}
+                onChange={(e) => setForm({ ...form, etd: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+                placeholder="cth: 6 - 8 Hours"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Berat Maksimal (gram)
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={form.max_weight_gram}
+                onChange={(e) => setForm({ ...form, max_weight_gram: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Pesanan di atas berat ini tidak dilayani area ini
+              </p>
+            </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Catatan
@@ -403,6 +473,8 @@ export default function BjsExpressAreas() {
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kode Pos</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Jam Buka</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Cut-off</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Ongkir</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">ETD</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Status</th>
                   <th className="px-6 py-3 text-right font-medium text-slate-500">Aksi</th>
                 </tr>
@@ -416,6 +488,16 @@ export default function BjsExpressAreas() {
                     <td className="px-6 py-4">{area.postal_code}</td>
                     <td className="px-6 py-4">{area.open_time || "-"}</td>
                     <td className="px-6 py-4">{area.cutoff_time || "-"}</td>
+                    <td className="px-6 py-4">
+                      {area.shipping_cost === 0
+                        ? "Gratis"
+                        : new Intl.NumberFormat("id-ID", {
+                            style: "currency",
+                            currency: "IDR",
+                            maximumFractionDigits: 0,
+                          }).format(area.shipping_cost || 0)}
+                    </td>
+                    <td className="px-6 py-4">{area.etd || "-"}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${

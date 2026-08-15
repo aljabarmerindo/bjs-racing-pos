@@ -25,6 +25,10 @@
     { "source": "/api/shipping/biteship/gojek-areas/:id", "destination": "/api/shipping/biteship/gojek-areas/[id].js" },
     { "source": "/api/shipping/biteship/bjs-express-areas", "destination": "/api/shipping/biteship/bjs-express-areas.js" },
     { "source": "/api/shipping/biteship/bjs-express-areas/:id", "destination": "/api/shipping/biteship/bjs-express-areas/[id].js" },
+    { "source": "/api/couriers", "destination": "/api/couriers.js" },
+    { "source": "/api/couriers/:id", "destination": "/api/couriers/[id].js" },
+    { "source": "/api/bjs-express/orders", "destination": "/api/bjs-express/orders.js" },
+    { "source": "/api/bjs-express/assign", "destination": "/api/bjs-express/assign.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
