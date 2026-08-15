@@ -13,62 +13,73 @@ import {
 import { getUserRole } from "../config/aiConfig.js";
 import { supabase } from "../supabaseClient.js";
 
-export default function ManajemenKategori() {
-  const [categories, setCategories] = useState([]);
+const NORMALIZE_KEBALIK = { "TANPA MEREK": "Tanpa Merek (kosong)" };
+
+function normalizeMerek(merek) {
+  if (merek === null || merek === undefined) return "TANPA MEREK";
+  const trimmed = merek.trim();
+  if (trimmed === "" || trimmed === "-") return "TANPA MEREK";
+  return trimmed;
+}
+
+function labelMerek(merek) {
+  return NORMALIZE_KEBALIK[merek] || merek;
+}
+
+export default function ManajemenMerek() {
+  const [mereks, setMereks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  const fetchCategories = useCallback(async () => {
+  const fetchMereks = useCallback(async () => {
     setLoading(true);
     try {
       const { data: productData, error: productError } = await supabase
         .from("products")
-        .select("kategori")
-        .not("kategori", "in", '("Pilok", "Jasa")')
-        .not("kategori", "is", null)
-        .order("kategori", { ascending: true });
+        .select("merek");
 
       if (productError) throw productError;
 
-      const uniqueCategories = [...new Set((productData || []).map(p => p.kategori))];
+      const uniqueMereks = [
+        ...new Set((productData || []).map(p => normalizeMerek(p.merek))),
+      ].sort();
 
-      // Ambil SEMUA baris product_categories (hindari .in() besar)
-      const { data: categoryData, error: catError } = await supabase
-        .from("product_categories")
-        .select("kategori, is_active");
-      if (catError) throw catError;
+      // Ambil SEMUA baris product_mereks
+      const { data: merekData, error: merekError } = await supabase
+        .from("product_mereks")
+        .select("merek, is_active");
+      if (merekError) throw merekError;
 
       const statusMap = new Map();
-      (categoryData || []).forEach(row => statusMap.set(row.kategori, row.is_active));
+      (merekData || []).forEach(row => statusMap.set(row.merek, row.is_active));
 
-      const merged = uniqueCategories.map(kategori => ({
-        kategori,
-        is_active: statusMap.has(kategori) ? statusMap.get(kategori) : true,
+      const merged = uniqueMereks.map(merek => ({
+        merek,
+        is_active: statusMap.has(merek) ? statusMap.get(merek) : true,
       }));
 
-      // Seed kategori yang belum terdaftar (default aktif) agar visibilitas
-      // di /onderdil konsisten dengan halaman ini
-      const missing = merged.filter(c => !statusMap.has(c.kategori));
+      // Seed merek yang belum terdaftar (default aktif)
+      const missing = merged.filter(m => !statusMap.has(m.merek));
       if (missing.length > 0) {
         const { error: upsertError } = await supabase
-          .from("product_categories")
+          .from("product_mereks")
           .upsert(
-            missing.map(c => ({
-              kategori: c.kategori,
+            missing.map(m => ({
+              merek: m.merek,
               is_active: true,
               updated_at: new Date().toISOString(),
             })),
-            { onConflict: "kategori" }
+            { onConflict: "merek" }
           );
-        if (upsertError) console.error("Gagal seed kategori baru:", upsertError.message);
+        if (upsertError) console.error("Gagal seed merek baru:", upsertError.message);
       }
 
-      setCategories(merged);
+      setMereks(merged);
     } catch (err) {
-      console.error("Failed to load categories:", err);
+      console.error("Failed to load mereks:", err);
       setSaveMsg({ type: "error", text: `Gagal memuat data: ${err.message}` });
     } finally {
       setLoading(false);
@@ -83,33 +94,33 @@ export default function ManajemenKategori() {
         setLoading(false);
         return;
       }
-      fetchCategories();
+      fetchMereks();
     };
     init();
-  }, [fetchCategories]);
+  }, [fetchMereks]);
 
-  const handleToggle = useCallback(async (kategori, currentStatus) => {
+  const handleToggle = useCallback(async (merek, currentStatus) => {
     setSaving(true);
     setSaveMsg(null);
     try {
       const newStatus = !currentStatus;
       const { error } = await supabase
-        .from("product_categories")
+        .from("product_mereks")
         .upsert(
-          { kategori, is_active: newStatus, updated_at: new Date().toISOString() },
-          { onConflict: "kategori" }
+          { merek, is_active: newStatus, updated_at: new Date().toISOString() },
+          { onConflict: "merek" }
         );
 
       if (error) throw error;
 
-      setCategories(prev =>
-        prev.map(cat =>
-          cat.kategori === kategori ? { ...cat, is_active: newStatus } : cat
+      setMereks(prev =>
+        prev.map(m =>
+          m.merek === merek ? { ...m, is_active: newStatus } : m
         )
       );
       setSaveMsg({
         type: "success",
-        text: `Kategori "${kategori}" berhasil ${newStatus ? "diaktifkan" : "dinonaktifkan"}.`,
+        text: `Merek "${labelMerek(merek)}" berhasil ${newStatus ? "diaktifkan" : "dinonaktifkan"}.`,
       });
     } catch (err) {
       setSaveMsg({ type: "error", text: `Gagal menyimpan: ${err.message}` });
@@ -123,27 +134,27 @@ export default function ManajemenKategori() {
     setSaving(true);
     setSaveMsg(null);
     try {
-      const rows = Array.from(selectedIds).map(kategori => ({
-        kategori,
+      const rows = Array.from(selectedIds).map(merek => ({
+        merek,
         is_active: newStatus,
         updated_at: new Date().toISOString(),
       }));
 
       const { error } = await supabase
-        .from("product_categories")
-        .upsert(rows, { onConflict: "kategori" });
+        .from("product_mereks")
+        .upsert(rows, { onConflict: "merek" });
 
       if (error) throw error;
 
-      setCategories(prev =>
-        prev.map(cat =>
-          selectedIds.has(cat.kategori) ? { ...cat, is_active: newStatus } : cat
+      setMereks(prev =>
+        prev.map(m =>
+          selectedIds.has(m.merek) ? { ...m, is_active: newStatus } : m
         )
       );
 
       setSaveMsg({
         type: "success",
-        text: `${selectedIds.size} kategori berhasil ${newStatus ? "diaktifkan" : "dinonaktifkan"}.`,
+        text: `${selectedIds.size} merek berhasil ${newStatus ? "diaktifkan" : "dinonaktifkan"}.`,
       });
       setSelectedIds(new Set());
     } catch (err) {
@@ -155,20 +166,20 @@ export default function ManajemenKategori() {
 
   const toggleSelectAll = useCallback(() => {
     setSelectedIds(prev => {
-      if (prev.size === categories.length) {
+      if (prev.size === mereks.length) {
         return new Set();
       }
-      return new Set(categories.map(c => c.kategori));
+      return new Set(mereks.map(m => m.merek));
     });
-  }, [categories]);
+  }, [mereks]);
 
-  const toggleSelect = useCallback((kategori) => {
+  const toggleSelect = useCallback((merek) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(kategori)) {
-        next.delete(kategori);
+      if (next.has(merek)) {
+        next.delete(merek);
       } else {
-        next.add(kategori);
+        next.add(merek);
       }
       return next;
     });
@@ -191,7 +202,7 @@ export default function ManajemenKategori() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <FiLoader className="animate-spin text-orange-500" size={32} />
-        <span className="ml-3 text-slate-600 font-medium">Memuat kategori...</span>
+        <span className="ml-3 text-slate-600 font-medium">Memuat merek...</span>
       </div>
     );
   }
@@ -200,9 +211,9 @@ export default function ManajemenKategori() {
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Manajemen Kategori Onderdil</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Manajemen Merek Onderdil</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Kelola kategori produk yang muncul di halaman Onderdil & Aksesoris
+            Kelola merek produk yang muncul di halaman Onderdil & Aksesoris
           </p>
         </div>
       </div>
@@ -213,9 +224,10 @@ export default function ManajemenKategori() {
         <div className="text-sm text-blue-700">
           <p className="font-semibold mb-1">Cara Kerja</p>
           <p>
-            Kategori yang <span className="font-semibold">Aktif</span> akan muncul di halaman{" "}
-            <span className="font-semibold">/onderdil</span>. Nonaktifkan kategori untuk
-            menyembunyikannya dari pelanggan. Produk di POS tetap menampilkan semua kategori.
+            Merek yang <span className="font-semibold">Aktif</span> akan muncul di halaman{" "}
+            <span className="font-semibold">/onderdil</span>. Nonaktifkan merek untuk
+            menyembunyikannya dari pelanggan. Produk dengan merek kosong dikelompokkan
+            sebagai <span className="font-semibold">Tanpa Merek</span>.
           </p>
         </div>
       </div>
@@ -237,7 +249,7 @@ export default function ManajemenKategori() {
       {selectedIds.size > 0 && (
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3">
           <span className="text-sm text-slate-600 font-medium">
-            {selectedIds.size} kategori dipilih
+            {selectedIds.size} merek dipilih
           </span>
           <button
             onClick={() => handleBulkToggle(true)}
@@ -258,7 +270,7 @@ export default function ManajemenKategori() {
         </div>
       )}
 
-      {/* Categories Table */}
+      {/* Merek Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <table className="w-full">
           <thead>
@@ -266,13 +278,13 @@ export default function ManajemenKategori() {
               <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase w-12">
                 <input
                   type="checkbox"
-                  checked={categories.length > 0 && selectedIds.size === categories.length}
+                  checked={mereks.length > 0 && selectedIds.size === mereks.length}
                   onChange={toggleSelectAll}
                   className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
                 />
               </th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Kategori
+                Merek
               </th>
               <th className="text-center px-5 py-3 text-xs font-semibold text-slate-500 uppercase">
                 Status
@@ -283,21 +295,21 @@ export default function ManajemenKategori() {
             </tr>
           </thead>
           <tbody>
-            {categories.map((row) => (
+            {mereks.map((row) => (
               <tr
-                key={row.kategori}
+                key={row.merek}
                 className="border-b last:border-b-0 hover:bg-slate-50 transition-colors"
               >
                 <td className="px-4 py-3 text-center">
                   <input
                     type="checkbox"
-                    checked={selectedIds.has(row.kategori)}
-                    onChange={() => toggleSelect(row.kategori)}
+                    checked={selectedIds.has(row.merek)}
+                    onChange={() => toggleSelect(row.merek)}
                     className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
                   />
                 </td>
                 <td className="px-5 py-3">
-                  <span className="font-semibold text-slate-800">{row.kategori}</span>
+                  <span className="font-semibold text-slate-800">{labelMerek(row.merek)}</span>
                 </td>
                 <td className="px-5 py-3 text-center">
                   <span
@@ -312,7 +324,7 @@ export default function ManajemenKategori() {
                 </td>
                 <td className="px-5 py-3 text-center">
                   <button
-                    onClick={() => handleToggle(row.kategori, row.is_active)}
+                    onClick={() => handleToggle(row.merek, row.is_active)}
                     disabled={saving}
                     className={`p-2 rounded-lg transition-colors ${
                       row.is_active
@@ -331,7 +343,7 @@ export default function ManajemenKategori() {
       </div>
 
       <p className="text-xs text-slate-400 mt-2">
-        * Total {categories.length} kategori. Kategori baru yang ditambahkan ke produk akan otomatis muncul di sini dengan status Aktif.
+        * Total {mereks.length} merek. Merek baru yang ditambahkan ke produk akan otomatis muncul di sini dengan status Aktif.
       </p>
     </div>
   );

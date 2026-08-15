@@ -24,6 +24,7 @@ import {
   FiMapPin,
   FiPlay,
   FiToggleLeft,
+  FiToggleRight,
 } from "react-icons/fi";
 import { supabase } from "../supabaseClient.js";
 
@@ -105,6 +106,7 @@ function Navbar({ isOpen, onLinkClick }) {
     { name: "Manajemen AI", path: "/manajemen-ai", icon: <FiCpu /> },
     { name: "Pengaturan Margin", path: "/manajemen-margin", icon: <FiPercent /> },
     { name: "Manajemen Kategori", path: "/manajemen-kategori", icon: <FiToggleLeft /> },
+    { name: "Manajemen Merek", path: "/manajemen-merek", icon: <FiToggleRight /> },
     { name: "Manajemen Video", path: "/manajemen-video", icon: <FiPlay /> },
   ];
 

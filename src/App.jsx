@@ -34,6 +34,7 @@ import VoucherForm from "./pages/VoucherForm";
 import ManajemenModelAI from "./pages/ManajemenModelAI.jsx";
 import ManajemenMargin from "./pages/ManajemenMargin.jsx";
 import ManajemenKategori from "./pages/ManajemenKategori.jsx";
+import ManajemenMerek from "./pages/ManajemenMerek.jsx";
 import PromoBanners from "./pages/PromoBanners.jsx";
 import Brands from "./pages/Brands.jsx";
 import FlashSales from "./pages/FlashSales.jsx";
@@ -178,6 +179,7 @@ function App() {
             <Route path="manajemen-ai" element={<ManajemenModelAI />} />
             <Route path="manajemen-margin" element={<ManajemenMargin />} />
             <Route path="manajemen-kategori" element={<ManajemenKategori />} />
+            <Route path="manajemen-merek" element={<ManajemenMerek />} />
             <Route path="manajemen-video" element={<VideoListPage />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
