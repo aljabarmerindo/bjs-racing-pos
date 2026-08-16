@@ -26,7 +26,7 @@
     { "source": "/api/shipping/biteship/bjs-express-areas", "destination": "/api/shipping/biteship/bjs-express-areas.js" },
     { "source": "/api/shipping/biteship/bjs-express-areas/:id", "destination": "/api/shipping/biteship/bjs-express-areas/[id].js" },
     { "source": "/api/shipping/biteship/bjs-express-areas/bulk-import", "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js" },
-    { "source": "/api/shipping/rajaongkir/subdistricts", "destination": "/api/shipping/rajaongkir/subdistricts.js" },
+    { "source": "/api/shipping/rajaongkir/subdistricts", "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js" },
     { "source": "/api/couriers", "destination": "/api/couriers.js" },
     { "source": "/api/couriers/:id", "destination": "/api/couriers.js" },
     { "source": "/api/bjs-express/orders", "destination": "/api/bjs-express/orders.js" },
