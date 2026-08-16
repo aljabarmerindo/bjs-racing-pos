@@ -29,6 +29,7 @@
     { "source": "/api/couriers/:id", "destination": "/api/couriers.js" },
     { "source": "/api/bjs-express/orders", "destination": "/api/bjs-express/orders.js" },
     { "source": "/api/bjs-express/assign", "destination": "/api/bjs-express/orders.js" },
+    { "source": "/api/bjs-express/cancel-assignment", "destination": "/api/bjs-express/orders.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

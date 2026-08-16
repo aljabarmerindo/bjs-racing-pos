@@ -481,7 +481,7 @@ app.get("/api/bjs-express/orders", async (req, res) => {
         shipping_address,
         customer_id,
         customers (id, nama_pelanggan, telepon),
-        courier_assignments (id, status, notes, photo_url, completed_at, couriers (id, name, phone))
+        courier_assignments (id, status, notes, photo_url, completed_at, couriers (id, name, phone), courier_assignment_events (id, status, note, created_at))
       `)
       .eq("courier_details->>code", "internal")
       .order("created_at", { ascending: false })
@@ -574,6 +574,80 @@ app.post("/api/bjs-express/assign", async (req, res) => {
   } catch (err) {
     console.error("BJS Express assign error:", err);
     res.status(500).json({ message: "Gagal menugaskan kurir.", details: err.message });
+  }
+});
+
+// Batal penugasan kurir (mirror dari api/bjs-express/orders.js)
+app.post("/api/bjs-express/cancel-assignment", async (req, res) => {
+  try {
+    const { order_id, reason } = req.body;
+    if (!order_id) {
+      return res.status(400).json({ message: "order_id wajib diisi." });
+    }
+
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("id, status, courier_details, order_number")
+      .eq("id", order_id)
+      .single();
+    if (orderError || !order) {
+      return res.status(404).json({ message: "Pesanan tidak ditemukan." });
+    }
+
+    const courierCode = String(order.courier_details?.code || "").toLowerCase();
+    if (courierCode !== "internal") {
+      return res.status(400).json({ message: "Pesanan ini bukan kurir internal BJS Express." });
+    }
+    if (["completed", "cancelled"].includes(String(order.status))) {
+      return res.status(400).json({ message: `Pesanan berstatus ${order.status} tidak bisa dibatalkan.` });
+    }
+
+    const { data: assignment, error: asgError } = await supabase
+      .from("courier_assignments")
+      .select("id, status, courier_id")
+      .eq("order_id", order_id)
+      .neq("status", "cancelled")
+      .maybeSingle();
+    if (asgError || !assignment) {
+      return res.status(400).json({ message: "Tidak ada penugasan aktif untuk pesanan ini." });
+    }
+
+    const note = reason ? String(reason).slice(0, 500) : null;
+
+    const { error: cancelError } = await supabase
+      .from("courier_assignments")
+      .update({ status: "cancelled", completed_at: new Date().toISOString() })
+      .eq("id", assignment.id);
+    if (cancelError) throw cancelError;
+
+    await supabase.from("courier_assignment_events").insert({
+      assignment_id: assignment.id,
+      status: "cancelled",
+      note,
+    });
+
+    const cd = order.courier_details || {};
+    const { error: updateError } = await supabase
+      .from("orders")
+      .update({
+        status: "paid",
+        courier_details: {
+          ...cd,
+          shipping_status: null,
+          courier_id: null,
+          courier_name: null,
+        },
+      })
+      .eq("id", order_id);
+    if (updateError) throw updateError;
+
+    res.json({
+      success: true,
+      message: `Penugasan pesanan #${order.order_number} dibatalkan. Pesanan siap di-assign ulang.`,
+    });
+  } catch (err) {
+    console.error("BJS Express cancel error:", err);
+    res.status(500).json({ message: "Gagal membatalkan penugasan.", details: err.message });
   }
 });
 

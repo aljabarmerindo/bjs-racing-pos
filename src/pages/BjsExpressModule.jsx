@@ -3,7 +3,7 @@
 //  - Tab Area Layanan (kelola area + tarif flat)
 //  - Tab Data Kurir (CRUD kurir + akun login)
 //  - Tab Penugasan (tugaskan kurir ke pesanan BJS Express)
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import BjsExpressAreas from "./BjsExpressAreas.jsx";
 import {
   getCouriers,
@@ -12,6 +12,7 @@ import {
   deleteCourier,
   getBjsExpressOrders,
   assignCourierToOrder,
+  cancelBjsExpressAssignment,
 } from "../lib/biteshipClient.js";
 
 const formatRupiah = (number) =>
@@ -37,6 +38,15 @@ const assignmentStatusColors = {
   dropping_off: "bg-orange-100 text-orange-800",
   completed: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
+};
+
+const assignmentEventLabels = {
+  assigned: "Ditugaskan",
+  picked: "Barang diambil kurir",
+  in_transit: "Dalam perjalanan",
+  dropping_off: "Sampai di lokasi",
+  completed: "Selesai",
+  cancelled: "Dibatalkan",
 };
 
 function CourierModal({ isOpen, onClose, onSave, courierToEdit }) {
@@ -390,6 +400,8 @@ function PenugasanTab() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("paid,shipped");
   const [assigningId, setAssigningId] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
+  const [historyFor, setHistoryFor] = useState(null);
   const [assignMap, setAssignMap] = useState({});
   const [noteMap, setNoteMap] = useState({});
 
@@ -434,6 +446,26 @@ function PenugasanTab() {
     }
   };
 
+  const handleCancel = async (order) => {
+    const reason = window.prompt(
+      `Batalkan penugasan pesanan #${order.order_number}?\nTulis alasan pembatalan (opsional).`,
+      "",
+    );
+    if (reason === null) return;
+    if (!window.confirm(`Yakin batal penugasan pesanan #${order.order_number}? Order akan kembali ke status paid.`)) {
+      return;
+    }
+    setCancellingId(order.id);
+    try {
+      await cancelBjsExpressAssignment(order.id, reason || null);
+      await loadData();
+    } catch (err) {
+      alert("Gagal membatalkan penugasan: " + err.message);
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-white rounded-lg shadow-sm items-start md:items-center">
@@ -447,6 +479,7 @@ function PenugasanTab() {
           <option value="paid">Belum Ditugaskan</option>
           <option value="shipped">Sudah Ditugaskan</option>
           <option value="completed">Selesai</option>
+          <option value="cancelled">Dibatalkan</option>
         </select>
       </div>
 
@@ -480,104 +513,163 @@ function PenugasanTab() {
                   const assignment = order.courier_assignments?.[0] || null;
                   const assignedCourier = assignment?.couriers || null;
                   const isCompleted = order.status === "completed";
+                  const isCancelled = assignment?.status === "cancelled";
+                  const assignmentStatus = assignment?.status || (isCompleted ? "completed" : null);
+                  const events = (assignment?.courier_assignment_events || [])
+                    .slice()
+                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
                   return (
-                    <tr key={order.id} className="hover:bg-slate-50 align-top">
-                      <td className="px-6 py-4 font-medium">{order.order_number}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{formatTanggal(order.created_at)}</td>
-                      <td className="px-6 py-4">
-                        <div className="font-medium">{order.customers?.nama_pelanggan || "-"}</div>
-                        <div className="text-xs text-slate-500">{order.customers?.telepon || ""}</div>
-                      </td>
-                      <td className="px-6 py-4 max-w-xs">
-                        <div className="text-xs text-slate-600">
-                          {order.shipping_address?.full_address ||
-                            order.shipping_address?.address ||
-                            JSON.stringify(order.shipping_address || {}).slice(0, 120)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{formatRupiah(order.total_amount)}</td>
-                      <td className="px-6 py-4">
-                        {assignedCourier ? (
-                          <div>
-                            <div className="font-medium">{assignedCourier.name}</div>
-                            <div className="text-xs text-slate-500">{assignedCourier.phone || ""}</div>
+                    <Fragment key={order.id}>
+                      <tr className="hover:bg-slate-50 align-top">
+                        <td className="px-6 py-4 font-medium">{order.order_number}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{formatTanggal(order.created_at)}</td>
+                        <td className="px-6 py-4">
+                          <div className="font-medium">{order.customers?.nama_pelanggan || "-"}</div>
+                          <div className="text-xs text-slate-500">{order.customers?.telepon || ""}</div>
+                        </td>
+                        <td className="px-6 py-4 max-w-xs">
+                          <div className="text-xs text-slate-600">
+                            {order.shipping_address?.full_address ||
+                              order.shipping_address?.address ||
+                              JSON.stringify(order.shipping_address || {}).slice(0, 120)}
                           </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">Belum ditugaskan</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                            assignmentStatusColors[assignment?.status] || "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {assignment?.status || (isCompleted ? "completed" : "belum ditugaskan")}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {isCompleted ? (
-                          <span className="text-xs text-slate-400">Selesai</span>
-                        ) : assignment ? (
-                          <div className="flex flex-col gap-2 w-56">
-                            <select
-                              value={assignMap[order.id] || assignment.courier_id || ""}
-                              onChange={(e) =>
-                                setAssignMap((m) => ({ ...m, [order.id]: e.target.value }))
-                              }
-                              className="p-2 border rounded-md text-sm"
-                            >
-                              <option value="">Ganti kurir...</option>
-                              {couriers.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              onClick={() => handleAssign(order)}
-                              disabled={assigningId === order.id}
-                              className="bg-blue-600 text-white font-bold py-1 px-3 rounded-lg hover:bg-blue-700 disabled:bg-slate-400 text-xs"
-                            >
-                              {assigningId === order.id ? "Menyimpan..." : "Perbarui Penugasan"}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-2 w-56">
-                            <select
-                              value={assignMap[order.id] || ""}
-                              onChange={(e) =>
-                                setAssignMap((m) => ({ ...m, [order.id]: e.target.value }))
-                              }
-                              className="p-2 border rounded-md text-sm"
-                            >
-                              <option value="">Pilih kurir...</option>
-                              {couriers.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              placeholder="Catatan (opsional)"
-                              value={noteMap[order.id] || ""}
-                              onChange={(e) =>
-                                setNoteMap((m) => ({ ...m, [order.id]: e.target.value }))
-                              }
-                              className="p-2 border rounded-md text-sm"
-                            />
-                            <button
-                              onClick={() => handleAssign(order)}
-                              disabled={assigningId === order.id}
-                              className="bg-green-600 text-white font-bold py-1 px-3 rounded-lg hover:bg-green-700 disabled:bg-slate-400 text-xs"
-                            >
-                              {assigningId === order.id ? "Menyimpan..." : "Tugaskan Kurir"}
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{formatRupiah(order.total_amount)}</td>
+                        <td className="px-6 py-4">
+                          {assignedCourier ? (
+                            <div>
+                              <div className="font-medium">{assignedCourier.name}</div>
+                              <div className="text-xs text-slate-500">{assignedCourier.phone || ""}</div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">Belum ditugaskan</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                              assignmentStatusColors[assignmentStatus] || "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {assignmentEventLabels[assignmentStatus] || assignmentStatus || "belum ditugaskan"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {isCompleted ? (
+                            <span className="text-xs text-slate-400">Selesai</span>
+                          ) : isCancelled ? (
+                            <div className="flex flex-col gap-2 w-56">
+                              <span className="text-xs font-medium text-red-600">Penugasan dibatalkan</span>
+                              <button
+                                onClick={() => setHistoryFor(historyFor === order.id ? null : order.id)}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded-lg text-xs"
+                              >
+                                {historyFor === order.id ? "Tutup Riwayat" : "Lihat Riwayat"}
+                              </button>
+                            </div>
+                          ) : assignment ? (
+                            <div className="flex flex-col gap-2 w-56">
+                              <select
+                                value={assignMap[order.id] || assignment.courier_id || ""}
+                                onChange={(e) =>
+                                  setAssignMap((m) => ({ ...m, [order.id]: e.target.value }))
+                                }
+                                className="p-2 border rounded-md text-sm"
+                              >
+                                <option value="">Ganti kurir...</option>
+                                {couriers.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => handleAssign(order)}
+                                disabled={assigningId === order.id}
+                                className="bg-blue-600 text-white font-bold py-1 px-3 rounded-lg hover:bg-blue-700 disabled:bg-slate-400 text-xs"
+                              >
+                                {assigningId === order.id ? "Menyimpan..." : "Perbarui Penugasan"}
+                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleCancel(order)}
+                                  disabled={cancellingId === order.id}
+                                  className="bg-red-600 text-white font-bold py-1 px-3 rounded-lg hover:bg-red-700 disabled:bg-slate-400 text-xs"
+                                >
+                                  {cancellingId === order.id ? "Membatalkan..." : "Batal"}
+                                </button>
+                                <button
+                                  onClick={() => setHistoryFor(historyFor === order.id ? null : order.id)}
+                                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded-lg text-xs"
+                                >
+                                  {historyFor === order.id ? "Tutup Riwayat" : "Riwayat"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-2 w-56">
+                              <select
+                                value={assignMap[order.id] || ""}
+                                onChange={(e) =>
+                                  setAssignMap((m) => ({ ...m, [order.id]: e.target.value }))
+                                }
+                                className="p-2 border rounded-md text-sm"
+                              >
+                                <option value="">Pilih kurir...</option>
+                                {couriers.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                type="text"
+                                placeholder="Catatan (opsional)"
+                                value={noteMap[order.id] || ""}
+                                onChange={(e) =>
+                                  setNoteMap((m) => ({ ...m, [order.id]: e.target.value }))
+                                }
+                                className="p-2 border rounded-md text-sm"
+                              />
+                              <button
+                                onClick={() => handleAssign(order)}
+                                disabled={assigningId === order.id}
+                                className="bg-green-600 text-white font-bold py-1 px-3 rounded-lg hover:bg-green-700 disabled:bg-slate-400 text-xs"
+                              >
+                                {assigningId === order.id ? "Menyimpan..." : "Tugaskan Kurir"}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                      {historyFor === order.id && (
+                        <tr className="bg-slate-50/60">
+                          <td colSpan={8} className="px-6 py-4">
+                            <div className="max-w-lg">
+                              <p className="font-bold mb-3">Riwayat Penugasan</p>
+                              {events.length === 0 ? (
+                                <p className="text-xs text-slate-500">Belum ada riwayat event.</p>
+                              ) : (
+                                <ol className="relative border-l border-slate-200 ml-3 space-y-3">
+                                  {events.map((ev, i) => (
+                                    <li key={ev.id || i} className="ml-5">
+                                      <span className="absolute -left-[9px] mt-1 h-3 w-3 rounded-full bg-orange-500 border-2 border-white" />
+                                      <p className="font-medium text-xs">
+                                        {assignmentEventLabels[ev.status] || ev.status}
+                                      </p>
+                                      <p className="text-xs text-slate-500">{formatTanggal(ev.created_at)}</p>
+                                      {ev.note ? (
+                                        <p className="text-xs text-slate-600 mt-0.5">"{ev.note}"</p>
+                                      ) : null}
+                                    </li>
+                                  ))}
+                                </ol>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>

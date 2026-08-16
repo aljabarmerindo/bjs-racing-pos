@@ -179,3 +179,14 @@ export async function assignCourierToOrder(payload) {
   if (!res.ok) throw new Error(`Gagal menugaskan kurir. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
   return data;
 }
+
+export async function cancelBjsExpressAssignment(order_id, reason) {
+  const res = await fetch(`${API_BASE}/api/bjs-express/cancel-assignment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order_id, reason }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal membatalkan penugasan. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}
