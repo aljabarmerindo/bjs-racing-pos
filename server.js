@@ -418,16 +418,19 @@ app.post("/api/shipping/biteship/bjs-express-areas/bulk-import", async (req, res
       .select("village_name, subdistrict_id")
       .eq("subdistrict_id", subdistrict_id || "");
 
+    const existingDefault = (existingAreas.data || []).some(
+      (a) => !a.village_name || !a.village_name.trim()
+    );
+
     const existingVillages = new Set(
       (existingAreas.data || [])
         .map((a) => (a.village_name || "").trim().toLowerCase())
-        .filter(Boolean),
+        .filter((v) => v)
     );
 
     const rowsToInsert = [];
 
-    const defaultVillage = "";
-    if (!existingVillages.has(defaultVillage.toLowerCase())) {
+    if (!existingDefault) {
       rowsToInsert.push({
         subdistrict_id: subdistrict_id || "",
         district_name,
