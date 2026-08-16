@@ -14,6 +14,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
     city_name: "",
     province_name: "",
     postal_code: "",
+    village_name: "",
     is_active: true,
     notes: "",
     open_time: "08:00",
@@ -37,6 +38,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         city_name: areaToEdit.city_name || "",
         province_name: areaToEdit.province_name || "",
         postal_code: areaToEdit.postal_code || "",
+        village_name: areaToEdit.village_name || "",
         is_active: areaToEdit.is_active ?? true,
         notes: areaToEdit.notes || "",
         open_time: areaToEdit.open_time || "08:00",
@@ -56,6 +58,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         city_name: "",
         province_name: "",
         postal_code: "",
+        village_name: "",
         is_active: true,
         notes: "",
         open_time: "08:00",
@@ -94,6 +97,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
       city_name: area.administrativeLevel2 || "",
       province_name: area.administrativeLevel1 || "",
       postal_code: area.postalCode || "",
+      village_name: form.village_name || "",
       is_active: true,
       notes: form.notes,
       open_time: form.open_time,
@@ -222,6 +226,21 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 className="w-full p-2 border rounded-lg"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Desa / Kelurahan (opsional)
+              </label>
+              <input
+                type="text"
+                value={form.village_name}
+                onChange={(e) => setForm({ ...form, village_name: e.target.value })}
+                className="w-full p-2 border rounded-lg"
+                placeholder="Kosong = berlaku untuk semua desa"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Isi jika harga khusus untuk satu desa saja
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -468,6 +487,7 @@ export default function BjsExpressAreas() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kecamatan</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Desa</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kota</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Provinsi</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kode Pos</th>
@@ -483,6 +503,11 @@ export default function BjsExpressAreas() {
                 {areas.map((area) => (
                   <tr key={area.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4">{area.district_name}</td>
+                    <td className="px-6 py-4">
+                      {area.village_name || (
+                        <span className="text-slate-400 italic">Semua Desa</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">{area.city_name}</td>
                     <td className="px-6 py-4">{area.province_name}</td>
                     <td className="px-6 py-4">{area.postal_code}</td>

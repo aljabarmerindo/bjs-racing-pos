@@ -38,7 +38,7 @@ async function handleGet(req, res) {
 
 async function handlePost(req, res) {
   try {
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, village_name, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name } = req.body;
     if (!district_name || !city_name || !province_name || !postal_code) {
       return res.status(400).json({ message: "Field wajib tidak lengkap." });
     }
@@ -51,6 +51,7 @@ async function handlePost(req, res) {
         city_name,
         province_name,
         postal_code: String(postal_code),
+        village_name: (village_name || "").trim() || null,
         is_active,
         notes: notes || null,
         open_time: open_time || "08:00:00",
