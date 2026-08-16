@@ -114,6 +114,17 @@ export async function deleteBjsExpressArea(id) {
   return data;
 }
 
+export async function bulkCreateBjsExpressArea(payload) {
+  const res = await fetch(`${API_BASE}/api/shipping/biteship/bjs-express-areas/bulk-import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal bulk import desa. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}
+
 export async function searchBiteshipAreas(query) {
   const res = await fetch(`${API_BASE}/api/shipping/biteship/search-area?q=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error("Gagal mencari area.");
@@ -188,5 +199,16 @@ export async function cancelBjsExpressAssignment(order_id, reason) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`Gagal membatalkan penugasan. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
+  return data;
+}
+
+export async function fetchRajaOngkirSubdistricts(districtName, cityName) {
+  const res = await fetch(`${API_BASE}/api/shipping/rajaongkir/subdistricts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ district_name: districtName, city_name: cityName }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Gagal mengambil daftar desa dari RajaOngkir. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
   return data;
 }

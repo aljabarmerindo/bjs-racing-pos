@@ -4,7 +4,9 @@ import {
   createBjsExpressArea,
   updateBjsExpressArea,
   deleteBjsExpressArea,
+  bulkCreateBjsExpressArea,
   searchBiteshipAreas,
+  fetchRajaOngkirSubdistricts,
 } from "../lib/biteshipClient.js";
 
 function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
@@ -29,6 +31,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [scheduleError, setScheduleError] = useState("");
 
   useEffect(() => {
     if (areaToEdit) {
@@ -111,6 +114,10 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.open_time >= form.cutoff_time) {
+      alert("Jam buka harus lebih awal dari jam cut-off.");
+      return;
+    }
     setSaving(true);
     try {
       await onSave(form);
@@ -400,6 +407,12 @@ export default function BjsExpressAreas() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [areaToEdit, setAreaToEdit] = useState(null);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkDesaList, setBulkDesaList] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [rajaongkirDesaList, setRajaongkirDesaList] = useState([]);
+  const [selectedRajaongkirDesa, setSelectedRajaongkirDesa] = useState({});
+  const [fetchingRajaongkir, setFetchingRajaongkir] = useState(false);
 
   const loadAreas = async (retries = 2) => {
     setLoading(true);
@@ -450,6 +463,72 @@ export default function BjsExpressAreas() {
     }
   };
 
+  const handleBulkImport = async (form) => {
+    setBulkSaving(true);
+    try {
+      const manualDesa = bulkDesaList
+        .split(/[\n,]+/)
+        .map((d) => d.trim())
+        .filter(Boolean);
+
+      const rajaongkirSelected = Object.entries(selectedRajaongkirDesa)
+        .filter(([, checked]) => checked)
+        .map(([name]) => name);
+
+      const desaArray = [...new Set([...manualDesa, ...rajaongkirSelected])];
+      if (desaArray.length === 0) {
+        alert("Masukkan nama desa terlebih dahulu.");
+        return;
+      }
+      await bulkCreateBjsExpressArea({
+        subdistrict_id: form.subdistrict_id || areas.find((a) => a.district_name === form.district_name)?.subdistrict_id || "",
+        district_name: form.district_name,
+        city_name: form.city_name,
+        province_name: form.province_name,
+        postal_code: form.postal_code,
+        desa_list: desaArray,
+        open_time: form.open_time || "08:00:00",
+        cutoff_time: form.cutoff_time || "15:00:00",
+        shipping_cost: form.shipping_cost || 0,
+        etd: form.etd || "6 - 8 Hours",
+        max_weight_gram: form.max_weight_gram || "5000",
+        service_name: form.service_name || "BJS Express",
+      });
+      setIsBulkModalOpen(false);
+      setBulkDesaList("");
+      setRajaongkirDesaList([]);
+      setSelectedRajaongkirDesa({});
+      await loadAreas();
+      alert("Import desa berhasil.");
+    } catch (err) {
+      alert("Gagal import desa: " + err.message);
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const handleFetchRajaongkir = async (districtName, cityName) => {
+    if (!districtName || !cityName) {
+      alert("Isi Kecamatan dan Kota/Kabupaten terlebih dahulu.");
+      return;
+    }
+    setFetchingRajaongkir(true);
+    try {
+      const data = await fetchRajaOngkirSubdistricts(districtName, cityName);
+      const subdistricts = data.subdistricts || [];
+      const selected = {};
+      subdistricts.forEach((s) => {
+        selected[s.name] = true;
+      });
+      setRajaongkirDesaList(subdistricts);
+      setSelectedRajaongkirDesa(selected);
+    } catch (err) {
+      alert("Gagal mengambil data desa dari RajaOngkir: " + err.message);
+    } finally {
+      setFetchingRajaongkir(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -470,6 +549,15 @@ export default function BjsExpressAreas() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Tambah Area
+        </button>
+        <button
+          onClick={() => setIsBulkModalOpen(true)}
+          className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          Import Desa
         </button>
       </div>
 
@@ -566,6 +654,211 @@ export default function BjsExpressAreas() {
         onSave={handleSave}
         areaToEdit={areaToEdit}
       />
+
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-full overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold">Import Desa / Kelurahan</h2>
+              <button
+                onClick={() => {
+                  setIsBulkModalOpen(false);
+                  setBulkDesaList("");
+                }}
+                className="text-slate-500 hover:text-slate-700"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form
+              id="bulk-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const form = {
+                  subdistrict_id: formData.get("subdistrict_id") || "",
+                  district_name: formData.get("district_name") || "",
+                  city_name: formData.get("city_name") || "",
+                  province_name: formData.get("province_name") || "",
+                  postal_code: formData.get("postal_code") || "",
+                  open_time: formData.get("open_time") || "08:00:00",
+                  cutoff_time: formData.get("cutoff_time") || "15:00:00",
+                  shipping_cost: formData.get("shipping_cost") || "0",
+                  etd: formData.get("etd") || "6 - 8 Hours",
+                  max_weight_gram: formData.get("max_weight_gram") || "5000",
+                  service_name: formData.get("service_name") || "BJS Express",
+                };
+                handleBulkImport(form);
+              }}
+              className="p-6 space-y-4"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Kecamatan *
+                  </label>
+                  <input
+                    type="text"
+                    name="district_name"
+                    defaultValue={areaToEdit?.district_name || ""}
+                    className="w-full p-2 border rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Kota/Kabupaten *
+                  </label>
+                  <input
+                    type="text"
+                    name="city_name"
+                    defaultValue={areaToEdit?.city_name || ""}
+                    className="w-full p-2 border rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Provinsi *
+                  </label>
+                  <input
+                    type="text"
+                    name="province_name"
+                    defaultValue={areaToEdit?.province_name || ""}
+                    className="w-full p-2 border rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Kode Pos *
+                  </label>
+                  <input
+                    type="text"
+                    name="postal_code"
+                    defaultValue={areaToEdit?.postal_code || ""}
+                    className="w-full p-2 border rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Ongkir Flat (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    name="shipping_cost"
+                    defaultValue={areaToEdit?.shipping_cost ?? "0"}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    ETD
+                  </label>
+                  <input
+                    type="text"
+                    name="etd"
+                    defaultValue={areaToEdit?.etd || "6 - 8 Hours"}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Daftar Desa / Kelurahan (pisahkan dengan koma atau baris baru)
+                </label>
+                <textarea
+                  value={bulkDesaList}
+                  onChange={(e) => setBulkDesaList(e.target.value)}
+                  className="w-full p-2 border rounded-lg"
+                  rows={6}
+                  placeholder={"Contoh:\nDesa A\nDesa B\nDesa C"}
+                  required
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Setiap baris atau koma akan menjadi 1 area desa. Desa yang sudah ada akan dilewati.
+                </p>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Desa dari RajaOngkir
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const formData = new FormData(document.getElementById("bulk-form"));
+                      handleFetchRajaongkir(
+                        formData.get("district_name")?.toString() || "",
+                        formData.get("city_name")?.toString() || "",
+                      );
+                    }}
+                    disabled={fetchingRajaongkir}
+                    className="bg-orange-600 text-white text-sm font-bold py-1.5 px-3 rounded-lg hover:bg-orange-700 disabled:bg-slate-400 flex items-center gap-2"
+                  >
+                    {fetchingRajaongkir ? "Mengambil..." : "Ambil dari RajaOngkir"}
+                  </button>
+                </div>
+
+                {rajaongkirDesaList.length > 0 && (
+                  <div className="max-h-60 overflow-y-auto border rounded-lg p-3 space-y-2">
+                    {rajaongkirDesaList.map((desa) => (
+                      <label key={desa.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!selectedRajaongkirDesa[desa.name]}
+                          onChange={(e) =>
+                            setSelectedRajaongkirDesa({
+                              ...selectedRajaongkirDesa,
+                              [desa.name]: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4"
+                        />
+                        <span className="text-sm text-slate-700">{desa.name}</span>
+                        {desa.zip_code && (
+                          <span className="text-xs text-slate-400">({desa.zip_code})</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {rajaongkirDesaList.length === 0 && !fetchingRajaongkir && (
+                  <p className="text-xs text-slate-400">
+                    Klik "Ambil dari RajaOngkir" untuk mengisi daftar desa secara otomatis.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBulkModalOpen(false);
+                    setBulkDesaList("");
+                  }}
+                  className="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={bulkSaving}
+                  className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400 flex items-center gap-2"
+                >
+                  {bulkSaving ? "Mengimpor..." : "Import Desa"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
