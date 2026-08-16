@@ -207,7 +207,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 value={form.district_name}
                 onChange={(e) => setForm({ ...form, district_name: e.target.value })}
                 className="w-full p-2 border rounded-lg"
-                required
+            
               />
             </div>
             <div>
@@ -219,7 +219,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 value={form.city_name}
                 onChange={(e) => setForm({ ...form, city_name: e.target.value })}
                 className="w-full p-2 border rounded-lg"
-                required
+            
               />
             </div>
             <div>
@@ -231,7 +231,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 value={form.province_name}
                 onChange={(e) => setForm({ ...form, province_name: e.target.value })}
                 className="w-full p-2 border rounded-lg"
-                required
+            
               />
             </div>
             <div>
@@ -258,7 +258,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 value={form.postal_code}
                 onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
                 className="w-full p-2 border rounded-lg"
-                required
+            
               />
             </div>
             <div>
@@ -295,7 +295,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 value={form.open_time}
                 onChange={(e) => setForm({ ...form, open_time: e.target.value })}
                 className="w-full p-2 border rounded-lg"
-                required
+            
               />
             </div>
             <div>
@@ -307,7 +307,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 value={form.cutoff_time}
                 onChange={(e) => setForm({ ...form, cutoff_time: e.target.value })}
                 className="w-full p-2 border rounded-lg"
-                required
+            
               />
             </div>
             <div>
@@ -331,7 +331,7 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 value={form.shipping_cost}
                 onChange={(e) => setForm({ ...form, shipping_cost: e.target.value })}
                 className="w-full p-2 border rounded-lg"
-                required
+            
               />
               <p className="text-xs text-slate-400 mt-1">
                 0 = gratis ongkir
@@ -705,7 +705,7 @@ export default function BjsExpressAreas() {
                     name="district_name"
                     defaultValue={areaToEdit?.district_name || ""}
                     className="w-full p-2 border rounded-lg"
-                    required
+                
                   />
                 </div>
                 <div>
@@ -717,7 +717,7 @@ export default function BjsExpressAreas() {
                     name="city_name"
                     defaultValue={areaToEdit?.city_name || ""}
                     className="w-full p-2 border rounded-lg"
-                    required
+                
                   />
                 </div>
                 <div>
@@ -729,7 +729,7 @@ export default function BjsExpressAreas() {
                     name="province_name"
                     defaultValue={areaToEdit?.province_name || ""}
                     className="w-full p-2 border rounded-lg"
-                    required
+                
                   />
                 </div>
                 <div>
@@ -741,7 +741,7 @@ export default function BjsExpressAreas() {
                     name="postal_code"
                     defaultValue={areaToEdit?.postal_code || ""}
                     className="w-full p-2 border rounded-lg"
-                    required
+                
                   />
                 </div>
                 <div>
@@ -777,7 +777,6 @@ export default function BjsExpressAreas() {
                   className="w-full p-2 border rounded-lg"
                   rows={6}
                   placeholder={"Contoh:\nDesa A\nDesa B\nDesa C"}
-                  required
                 />
                 <p className="text-xs text-slate-400 mt-1">
                   Setiap baris atau koma akan menjadi 1 area desa. Desa yang sudah ada akan dilewati.
