@@ -115,7 +115,6 @@ async function handleCheckRates(req, res) {
     const destination = {
       latitude: Number(area.dest_lat),
       longitude: Number(area.dest_lng),
-      postal_code: area.postal_code || "",
     };
 
     const weight = Math.max(1, Math.round(Number(weight_gram) || 5000));
