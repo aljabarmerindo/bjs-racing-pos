@@ -332,6 +332,7 @@ app.put("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name, dest_lat, dest_lng } = req.body;
+    console.log("[BJS Express] Update area:", id, { dest_lat, dest_lng });
 
     if (open_time && cutoff_time && open_time >= cutoff_time) {
       return res.status(400).json({ message: "Jam buka harus lebih awal dari jam cut-off." });
@@ -388,6 +389,7 @@ app.delete("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
 app.post("/api/shipping/biteship/check-rates", async (req, res) => {
   try {
     const { destination_id, destination_name, weight_gram = 5000 } = req.body;
+    console.log("[Biteship] check-rates request:", { destination_id, weight_gram });
 
     if (!destination_id) {
       return res.status(400).json({ message: "destination_id wajib diisi." });
@@ -398,6 +400,7 @@ app.post("/api/shipping/biteship/check-rates", async (req, res) => {
       .select("dest_lat, dest_lng, district_name, village_name")
       .eq("id", destination_id)
       .single();
+    console.log("[Biteship] check-rates area from DB:", area);
 
     if (areaError || !area) {
       return res.status(404).json({ message: "Area BJS Express tidak ditemukan." });

@@ -502,6 +502,38 @@ export default function BjsExpressAreas() {
     }
   };
 
+  const handleCheckRates = async (area) => {
+    if (!area.dest_lat || !area.dest_lng) {
+      alert("Koordinat destinasi belum diisi untuk area ini. Edit area terlebih dahulu.");
+      return;
+    }
+    setCheckingRates(true);
+    try {
+      const data = await checkBiteshipRates(area.id, area.max_weight_gram || 5000);
+      console.log("[UI] checkBiteshipRates success:", data);
+      setRatesModal({ open: true, area, data });
+    } catch (err) {
+      console.error("[UI] checkBiteshipRates error:", err);
+      alert("Gagal mengecek rates: " + err.message);
+    } finally {
+      setCheckingRates(false);
+    }
+  };
+
+  const handleUpdateFromReference = async () => {
+    const { area, data } = ratesModal;
+    if (!area || !data) return;
+    if (!window.confirm(`Update harga BJS Express ke Rp ${data.reference_rate}?`)) return;
+    try {
+      await updateBjsExpressArea(area.id, { shipping_cost: data.reference_rate });
+      await loadAreas();
+      setRatesModal({ open: false, area: null, data: null });
+      alert("Harga berhasil diperbarui.");
+    } catch (err) {
+      alert("Gagal update harga: " + err.message);
+    }
+  };
+
   const handleBulkImport = async (form) => {
     setBulkSaving(true);
     try {
@@ -936,6 +968,67 @@ export default function BjsExpressAreas() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {ratesModal.open && ratesModal.area && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold">Compare Rates</h2>
+              <button
+                onClick={() => setRatesModal({ open: false, area: null, data: null })}
+                className="text-slate-500 hover:text-slate-700"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg">{ratesModal.area.district_name} {ratesModal.area.village_name ? `/ ${ratesModal.area.village_name}` : ""}</h3>
+                <p className="text-sm text-slate-500">{ratesModal.area.city_name}, {ratesModal.area.province_name}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-600 font-medium">Gojek Rate (Biteship)</p>
+                  <p className="text-xl font-bold">
+                    {ratesModal.data?.reference_rate ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(ratesModal.data.reference_rate) : "-"}
+                  </p>
+                </div>
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <p className="text-sm text-orange-600 font-medium">Harga BJS Express</p>
+                  <p className="text-xl font-bold">
+                    {ratesModal.area.shipping_cost ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(ratesModal.area.shipping_cost) : "Gratis"}
+                  </p>
+                </div>
+              </div>
+              {ratesModal.data?.reference_rate && (
+                <div className="text-sm text-slate-600">
+                  Selisih: {ratesModal.area.shipping_cost - ratesModal.data.reference_rate > 0 ? "+" : ""}{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(ratesModal.area.shipping_cost - ratesModal.data.reference_rate)}
+                  ({ratesModal.area.shipping_cost > 0 ? Math.round((ratesModal.data.reference_rate / ratesModal.area.shipping_cost) * 100) : 0}% dari Gojek)
+                </div>
+              )}
+              <div className="text-xs text-slate-400">
+                Terakhir dicek: {ratesModal.data?.checked_at ? new Date(ratesModal.data.checked_at).toLocaleString("id-ID") : "-"}
+              </div>
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <button
+                  onClick={() => setRatesModal({ open: false, area: null, data: null })}
+                  className="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300"
+                >
+                  Tutup
+                </button>
+                <button
+                  onClick={handleUpdateFromReference}
+                  className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700"
+                >
+                  Update Harga BJS Express
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

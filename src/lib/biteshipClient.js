@@ -214,12 +214,15 @@ export async function fetchRajaOngkirSubdistricts(districtName, cityName) {
 }
 
 export async function checkBiteshipRates(destinationId, weightGram = 5000) {
+  const payload = { destination_id: destinationId, weight_gram: weightGram };
+  console.log("[Biteship Client] checkBiteshipRates payload:", payload);
   const res = await fetch(`${API_BASE}/api/shipping/biteship/check-rates`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ destination_id: destinationId, weight_gram: weightGram }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
+  console.log("[Biteship Client] checkBiteshipRates response:", res.status, data);
   if (!res.ok) throw new Error(`Gagal mengecek rates Biteship. [${res.status}] ${data.message || data.details || JSON.stringify(data)}`);
   return data;
 }
