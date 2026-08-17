@@ -8,6 +8,17 @@ const supabase = createClient(
 const RAJAONGKIR_BASE = "https://rajaongkir.komerce.id/api/v1";
 const RAJAONGKIR_API_KEY = process.env.RAJAONGKIR_API_KEY || "";
 
+const BITESHIP_BASE = "https://api.biteship.com";
+const BITESHIP_API_KEY = process.env.BITESHIP_API_KEY || "";
+const ORIGIN = {
+  contactName: process.env.BITESHIP_ORIGIN_NAME || "BJS Racing Store",
+  contactPhone: process.env.BITESHIP_ORIGIN_PHONE || "",
+  address: process.env.BITESHIP_ORIGIN_ADDRESS || "",
+  postalCode: process.env.BITESHIP_ORIGIN_POSTAL || "",
+  latitude: Number(process.env.BITESHIP_ORIGIN_LAT || 0),
+  longitude: Number(process.env.BITESHIP_ORIGIN_LNG || 0),
+};
+
 function toTitleCase(text) {
   if (!text) return "";
   return text
@@ -75,6 +86,136 @@ async function handleRajaOngkir(req, res) {
   } catch (err) {
     console.error("RajaOngkir subdistrict fetch error:", err);
     res.status(500).json({ message: "Gagal mengambil data desa dari RajaOngkir.", details: err.message });
+  }
+}
+
+async function handleCheckRates(req, res) {
+  try {
+    const { destination_id, destination_name, weight_gram = 5000 } = req.body;
+
+    if (!destination_id) {
+      return res.status(400).json({ message: "destination_id wajib diisi." });
+    }
+
+    const { data: area, error: areaError } = await supabase
+      .from("bjs_express_areas")
+      .select("dest_lat, dest_lng, district_name, village_name")
+      .eq("id", destination_id)
+      .single();
+
+    if (areaError || !area) {
+      return res.status(404).json({ message: "Area BJS Express tidak ditemukan." });
+    }
+
+    if (!area.dest_lat || !area.dest_lng) {
+      return res.status(400).json({ message: "Koordinat destinasi belum diisi untuk area ini." });
+    }
+
+    const originAreaId = process.env.BITESHIP_ORIGIN_POSTAL || "";
+
+    const ratesPayload = {
+      origin: {
+        location_id: originAreaId,
+        latitude: ORIGIN.latitude,
+        longitude: ORIGIN.longitude,
+      },
+      destination: {
+        location_id: destination_id,
+        latitude: Number(area.dest_lat),
+        longitude: Number(area.dest_lng),
+      },
+      weight: Number(weight_gram),
+      couriers: "gojek",
+    };
+
+    const ratesRes = await fetch(`${BITESHIP_BASE}/v1/rates/couriers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: BITESHIP_API_KEY,
+      },
+      body: JSON.stringify(ratesPayload),
+    });
+
+    const ratesJson = await ratesRes.json();
+
+    if (!ratesRes.ok || ratesJson.meta?.status !== "success") {
+      return res.status(ratesJson.meta?.code || 500).json({
+        message: ratesJson.meta?.message || "Gagal mengambil rates dari Biteship.",
+      });
+    }
+
+    const gojekPricing = (ratesJson.data || []).find(
+      (item) => item.courier_code === "gojek" || item.company === "gojek"
+    );
+
+    if (!gojekPricing) {
+      return res.status(404).json({
+        success: false,
+        message: "Gojek tidak tersedia untuk rute ini.",
+        available_couriers: (ratesJson.data || []).map((item) => item.courier_code),
+      });
+    }
+
+    res.json({
+      success: true,
+      reference_rate: gojekPricing.shipping_fee || gojekPricing.price || 0,
+      currency: gojekPricing.currency || "IDR",
+      courier: "gojek",
+      service_name: gojekPricing.courier_service_name,
+      duration: gojekPricing.duration,
+      checked_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Biteship check-rates error:", err);
+    res.status(500).json({ message: "Gagal mengecek rates Biteship.", details: err.message });
+  }
+}
+
+async function handleUpdateReferenceRates(req, res) {
+  try {
+    const { areas } = req.body;
+
+    if (!Array.isArray(areas) || areas.length === 0) {
+      return res.status(400).json({ message: "Data area kosong." });
+    }
+
+    let updated = 0;
+    const results = [];
+
+    for (const area of areas) {
+      const { id, reference_rate, reference_updated_at } = area;
+
+      if (!id) continue;
+
+      const updateData = {
+        reference_rate: Number(reference_rate) || 0,
+        reference_updated_at: reference_updated_at || new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from("bjs_express_areas")
+        .update(updateData)
+        .eq("id", id);
+
+      if (error) {
+        results.push({ id, success: false, error: error.message });
+        continue;
+      }
+
+      updated++;
+      results.push({ id, success: true });
+    }
+
+    res.json({
+      success: true,
+      updated,
+      failed: areas.length - updated,
+      results,
+    });
+  } catch (err) {
+    console.error("Update reference rates error:", err);
+    res.status(500).json({ message: "Gagal update reference rates.", details: err.message });
   }
 }
 
@@ -207,6 +348,14 @@ export default function handler(req, res) {
 
   if (path.includes("/rajaongkir/subdistricts")) {
     return handleRajaOngkir(req, res);
+  }
+
+  if (path.includes("/check-rates")) {
+    return handleCheckRates(req, res);
+  }
+
+  if (path.includes("/update-reference-rates")) {
+    return handleUpdateReferenceRates(req, res);
   }
 
   return handleBulkImport(req, res);
