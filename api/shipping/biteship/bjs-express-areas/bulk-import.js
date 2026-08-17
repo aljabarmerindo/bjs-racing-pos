@@ -111,32 +111,34 @@ async function handleCheckRates(req, res) {
       return res.status(400).json({ message: "Koordinat destinasi belum diisi untuk area ini." });
     }
 
-    const origin = {
-      latitude: Number(ORIGIN.latitude),
-      longitude: Number(ORIGIN.longitude),
-      postal_code: Number(ORIGIN.postalCode),
-    };
-    const destination = {
-      latitude: Number(area.dest_lat),
-      longitude: Number(area.dest_lng),
-      postal_code: Number(area.postal_code),
-    };
+    const originPostalCode = Number(ORIGIN.postalCode);
+    const destinationPostalCode = Number(area.postal_code);
+
+    if (!originPostalCode || !destinationPostalCode) {
+      return res.status(400).json({ message: "Kode pos origin atau destination tidak valid." });
+    }
 
     const weight = Math.max(1, Math.round(Number(weight_gram) || 5000));
     const couriers = String(process.env.BITESHIP_COURIERS || "gojek").replace(/\s+/g, "");
 
     const ratesPayload = {
-      origin,
-      destination,
+      origin_latitude: Number(ORIGIN.latitude),
+      origin_longitude: Number(ORIGIN.longitude),
+      origin_postal_code: originPostalCode,
+      destination_latitude: Number(area.dest_lat),
+      destination_longitude: Number(area.dest_lng),
+      destination_postal_code: destinationPostalCode,
       couriers,
       items: [
         {
           name: "Pesanan BJS Racing",
           description: "Pakaian & sparepart motor",
+          value: 10000,
+          quantity: 1,
+          weight,
           length: 10,
           width: 10,
           height: 10,
-          weight,
         },
       ],
     };
