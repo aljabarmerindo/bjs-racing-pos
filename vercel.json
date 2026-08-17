@@ -77,11 +77,11 @@
     },
     {
       "source": "/api/shipping/biteship/check-rates",
-      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
+      "destination": "/api/shipping/biteship/check-rates.js"
     },
     {
       "source": "/api/shipping/biteship/update-reference-rates",
-      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
+      "destination": "/api/shipping/biteship/update-reference-rates.js"
     },
     {
       "source": "/api/couriers",
@@ -106,14 +106,6 @@
     {
       "source": "/(.*)",
       "destination": "/index.html"
-    },
-    {
-      "source": "/api/shipping/biteship/check-rates",
-      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
-    },
-    {
-      "source": "/api/shipping/biteship/update-reference-rates",
-      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
     }
   ]
 }
