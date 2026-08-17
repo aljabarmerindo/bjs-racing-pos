@@ -162,7 +162,7 @@ async function handleCheckRates(req, res) {
         return res.status(500).json({ message: "Gagal membaca respons Biteship.", details: ratesText });
     }
 
-    if (!ratesRes.ok || ratesJson.meta?.status !== "success") {
+    if (!ratesRes.ok || !(ratesJson.meta?.status === "success" || ratesJson.success === true)) {
       return res.status(ratesJson.meta?.code || 500).json({
         message: ratesJson.meta?.message || "Gagal mengambil rates dari Biteship.",
         details: ratesJson,
