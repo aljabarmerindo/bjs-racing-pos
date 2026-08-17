@@ -452,6 +452,8 @@ export default function BjsExpressAreas() {
   const [fetchingRajaongkir, setFetchingRajaongkir] = useState(false);
   const [checkingRates, setCheckingRates] = useState(false);
   const [ratesModal, setRatesModal] = useState({ open: false, area: null, data: null });
+  const [bulkRatesResults, setBulkRatesResults] = useState([]);
+  const [showBulkRatesModal, setShowBulkRatesModal] = useState(false);
 
   const loadAreas = async (retries = 2) => {
     setLoading(true);
@@ -528,6 +530,39 @@ export default function BjsExpressAreas() {
       await updateBjsExpressArea(area.id, { shipping_cost: data.reference_rate });
       await loadAreas();
       setRatesModal({ open: false, area: null, data: null });
+      alert("Harga berhasil diperbarui.");
+    } catch (err) {
+      alert("Gagal update harga: " + err.message);
+    }
+  };
+
+  const handleBulkUpdateFromReference = async () => {
+    const successfulResults = bulkRatesResults.filter((r) => r.success && r.data?.reference_rate);
+    if (!successfulResults.length) {
+      alert("Tidak ada area yang berhasil dicek.");
+      return;
+    }
+    if (!confirm(`Update harga BJS Express untuk ${successfulResults.length} area?`)) return;
+    try {
+      await updateReferenceRates(
+        successfulResults.map((r) => ({
+          id: r.area.id,
+          reference_rate: r.data.reference_rate,
+          reference_updated_at: new Date().toISOString(),
+        }))
+      );
+      await loadAreas();
+      setShowBulkRatesModal(false);
+      alert(`Berhasil update ${successfulResults.length} area.`);
+    } catch (err) {
+      alert("Gagal update bulk: " + err.message);
+    }
+  };
+
+  const handleUpdateSingleFromBulk = async (result) => {
+    try {
+      await updateBjsExpressArea(result.area.id, { shipping_cost: result.data.reference_rate });
+      await loadAreas();
       alert("Harga berhasil diperbarui.");
     } catch (err) {
       alert("Gagal update harga: " + err.message);
@@ -636,13 +671,23 @@ export default function BjsExpressAreas() {
             if (!activeAreas.length) return;
             if (!confirm(`Cek rates untuk ${activeAreas.length} area aktif?`)) return;
             setCheckingRates(true);
+            const results = [];
             try {
               for (const area of activeAreas) {
-                if (!area.dest_lat || !area.dest_lng) continue;
-                await checkBiteshipRates(area.id, area.max_weight_gram || 5000);
+                if (!area.dest_lat || !area.dest_lng) {
+                  results.push({ area, success: false, error: "Koordinat belum diisi" });
+                  continue;
+                }
+                try {
+                  const data = await checkBiteshipRates(area.id, area.max_weight_gram || 5000);
+                  results.push({ area, data, success: true });
+                } catch (err) {
+                  results.push({ area, error: err.message, success: false });
+                }
               }
+              setBulkRatesResults(results);
+              setShowBulkRatesModal(true);
               await loadAreas();
-              alert("Selesai cek rates.");
             } catch (err) {
               alert("Gagal cek rates: " + err.message);
             } finally {
@@ -1027,6 +1072,91 @@ export default function BjsExpressAreas() {
                 >
                   Update Harga BJS Express
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showBulkRatesModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold">Hasil Cek Semua Rates</h2>
+              <button
+                onClick={() => setShowBulkRatesModal(false)}
+                className="text-slate-500 hover:text-slate-700"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4 flex gap-2">
+                <button
+                  onClick={handleBulkUpdateFromReference}
+                  className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700"
+                >
+                  Update Semua Harga yang Berhasil
+                </button>
+                <button
+                  onClick={() => setShowBulkRatesModal(false)}
+                  className="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300"
+                >
+                  Tutup
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium text-slate-500">Kecamatan</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-500">Desa</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-500">Gojek Rate</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-500">Harga BJS</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-500">Selisih</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-500">Status</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-500">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {bulkRatesResults.map((result) => (
+                      <tr key={result.area.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-4">{result.area.district_name}</td>
+                        <td className="px-4 py-4">{result.area.village_name || "-"}</td>
+                        <td className="px-4 py-4">
+                          {result.success
+                            ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(result.data.reference_rate || 0)
+                            : result.error}
+                        </td>
+                        <td className="px-4 py-4">
+                          {result.area.shipping_cost ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(result.area.shipping_cost) : "Gratis"}
+                        </td>
+                        <td className="px-4 py-4">
+                          {result.success && result.data?.reference_rate !== undefined
+                            ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(result.area.shipping_cost - result.data.reference_rate)
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={result.success ? "text-green-600" : "text-red-600"}>
+                            {result.success ? "Berhasil" : "Gagal"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          {result.success && (
+                            <button
+                              onClick={() => handleUpdateSingleFromBulk(result)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              Update Harga
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
