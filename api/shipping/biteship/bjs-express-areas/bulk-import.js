@@ -111,10 +111,15 @@ async function handleCheckRates(req, res) {
       return res.status(400).json({ message: "Koordinat destinasi belum diisi untuk area ini." });
     }
 
-    const origin = { latitude: ORIGIN.latitude, longitude: ORIGIN.longitude };
+    const origin = {
+      latitude: Number(ORIGIN.latitude),
+      longitude: Number(ORIGIN.longitude),
+      postal_code: Number(ORIGIN.postalCode),
+    };
     const destination = {
       latitude: Number(area.dest_lat),
       longitude: Number(area.dest_lng),
+      postal_code: Number(area.postal_code),
     };
 
     const weight = Math.max(1, Math.round(Number(weight_gram) || 5000));
