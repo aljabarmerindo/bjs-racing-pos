@@ -164,7 +164,12 @@ async function handleCheckRates(req, res) {
     if (!ratesRes.ok || ratesJson.meta?.status !== "success") {
       return res.status(ratesJson.meta?.code || 500).json({
         message: ratesJson.meta?.message || "Gagal mengambil rates dari Biteship.",
-        });
+        details: ratesJson,
+        debug: {
+          httpStatus: ratesRes.status,
+          rawBody: ratesText,
+        },
+      });
     }
 
     const pricing = ratesJson.pricing || ratesJson.data || [];
