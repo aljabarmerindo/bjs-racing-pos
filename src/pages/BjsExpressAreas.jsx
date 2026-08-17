@@ -8,6 +8,7 @@ import {
   searchBiteshipAreas,
   fetchRajaOngkirSubdistricts,
 } from "../lib/biteshipClient.js";
+import { checkBiteshipRates, updateReferenceRates } from "../lib/biteshipClient.js";
 
 function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
   const [form, setForm] = useState({
@@ -25,6 +26,8 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
     etd: "6 - 8 Hours",
     max_weight_gram: "5000",
     service_name: "BJS Express",
+    dest_lat: "",
+    dest_lng: "",
   });
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -50,6 +53,8 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
         etd: areaToEdit.etd || "6 - 8 Hours",
         max_weight_gram: areaToEdit.max_weight_gram ?? "5000",
         service_name: areaToEdit.service_name || "BJS Express",
+        dest_lat: areaToEdit.dest_lat || "",
+        dest_lng: areaToEdit.dest_lng || "",
       });
       setSelected(null);
       setQuery("");
@@ -109,6 +114,8 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
       etd: form.etd,
       max_weight_gram: form.max_weight_gram,
       service_name: form.service_name,
+      dest_lat: area.latitude || "",
+      dest_lng: area.longitude || "",
     });
   };
 
@@ -321,6 +328,36 @@ function BjsExpressAreaModal({ isOpen, onClose, onSave, areaToEdit }) {
                 className="w-full p-2 border rounded-lg"
               />
             </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Koordinat Destinasi
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Latitude</label>
+                  <input
+                    type="text"
+                    value={form.dest_lat}
+                    onChange={(e) => setForm({ ...form, dest_lat: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="Contoh: -6.5244682"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Longitude</label>
+                  <input
+                    type="text"
+                    value={form.dest_lng}
+                    onChange={(e) => setForm({ ...form, dest_lng: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="Contoh: 110.7674915"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Koordinat akan terisi otomatis jika Anda memilih area dari search Biteship. Anda juga bisa mengedit manual.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Ongkir Flat (Rp)
@@ -413,6 +450,8 @@ export default function BjsExpressAreas() {
   const [rajaongkirDesaList, setRajaongkirDesaList] = useState([]);
   const [selectedRajaongkirDesa, setSelectedRajaongkirDesa] = useState({});
   const [fetchingRajaongkir, setFetchingRajaongkir] = useState(false);
+  const [checkingRates, setCheckingRates] = useState(false);
+  const [ratesModal, setRatesModal] = useState({ open: false, area: null, data: null });
 
   const loadAreas = async (retries = 2) => {
     setLoading(true);
@@ -559,6 +598,33 @@ export default function BjsExpressAreas() {
           </svg>
           Import Desa
         </button>
+        <button
+          onClick={async () => {
+            const activeAreas = areas.filter((a) => a.is_active);
+            if (!activeAreas.length) return;
+            if (!confirm(`Cek rates untuk ${activeAreas.length} area aktif?`)) return;
+            setCheckingRates(true);
+            try {
+              for (const area of activeAreas) {
+                if (!area.dest_lat || !area.dest_lng) continue;
+                await checkBiteshipRates(area.id, area.max_weight_gram || 5000);
+              }
+              await loadAreas();
+              alert("Selesai cek rates.");
+            } catch (err) {
+              alert("Gagal cek rates: " + err.message);
+            } finally {
+              setCheckingRates(false);
+            }
+          }}
+          disabled={checkingRates}
+          className="bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-emerald-700 disabled:bg-slate-400 flex items-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {checkingRates ? "Mengecek..." : "Cek Semua Rates"}
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -583,7 +649,7 @@ export default function BjsExpressAreas() {
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Cut-off</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Ongkir</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">ETD</th>
-                  <th className="px-6 py-3 text-left font-medium text-slate-500">Status</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Ref. Rate</th>\n                    <th className="px-6 py-3 text-left font-medium text-slate-500">Terakhir Dicek</th>\n                    <th className="px-6 py-3 text-left font-medium text-slate-500">Status</th>
                   <th className="px-6 py-3 text-right font-medium text-slate-500">Aksi</th>
                 </tr>
               </thead>
@@ -610,7 +676,7 @@ export default function BjsExpressAreas() {
                             maximumFractionDigits: 0,
                           }).format(area.shipping_cost || 0)}
                     </td>
-                    <td className="px-6 py-4">{area.etd || "-"}</td>
+                    <td className="px-6 py-4">{area.etd || "-"}</td>\n                    <td className="px-6 py-4">\n                      {area.reference_rate ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(area.reference_rate) : "-"}\n                    </td>\n                    <td className="px-6 py-4">\n                      {area.reference_updated_at ? new Date(area.reference_updated_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "-"}\n                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -623,6 +689,15 @@ export default function BjsExpressAreas() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => handleCheckRates(area)}
+                        className="text-green-600 hover:text-green-800 mr-3"
+                        title="Cek Rates Biteship"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
                       <button
                         onClick={() => handleEdit(area)}
                         className="text-blue-600 hover:text-blue-800 mr-3"

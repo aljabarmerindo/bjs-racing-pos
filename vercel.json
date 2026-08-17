@@ -3,12 +3,30 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-XSS-Protection", "value": "1; mode=block" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; img-src 'self' data: https://ykotzsmncvyfveypeevb.supabase.co https://*.supabase.co https://img.youtube.com https://i.ytimg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://ykotzsmncvyfveypeevb.supabase.co https://*.supabase.co; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.google-analytics.com https://*.google-analytics.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
@@ -17,21 +35,85 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/shipping/internal/rates", "destination": "/api/shipping/internal/rates.js" },
-    { "source": "/api/shipping/biteship/rates", "destination": "/api/shipping/biteship/rates.js" },
-    { "source": "/api/shipping/biteship/book", "destination": "/api/shipping/biteship/book.js" },
-    { "source": "/api/shipping/biteship/search-area", "destination": "/api/shipping/biteship/search-area.js" },
-    { "source": "/api/shipping/biteship/gojek-areas", "destination": "/api/shipping/biteship/gojek-areas.js" },
-    { "source": "/api/shipping/biteship/gojek-areas/:id", "destination": "/api/shipping/biteship/gojek-areas/[id].js" },
-    { "source": "/api/shipping/biteship/bjs-express-areas", "destination": "/api/shipping/biteship/bjs-express-areas.js" },
-    { "source": "/api/shipping/biteship/bjs-express-areas/:id", "destination": "/api/shipping/biteship/bjs-express-areas/[id].js" },
-    { "source": "/api/shipping/biteship/bjs-express-areas/bulk-import", "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js" },
-    { "source": "/api/shipping/rajaongkir/subdistricts", "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js" },
-    { "source": "/api/couriers", "destination": "/api/couriers.js" },
-    { "source": "/api/couriers/:id", "destination": "/api/couriers.js" },
-    { "source": "/api/bjs-express/orders", "destination": "/api/bjs-express/orders.js" },
-    { "source": "/api/bjs-express/assign", "destination": "/api/bjs-express/orders.js" },
-    { "source": "/api/bjs-express/cancel-assignment", "destination": "/api/bjs-express/orders.js" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/shipping/internal/rates",
+      "destination": "/api/shipping/internal/rates.js"
+    },
+    {
+      "source": "/api/shipping/biteship/rates",
+      "destination": "/api/shipping/biteship/rates.js"
+    },
+    {
+      "source": "/api/shipping/biteship/book",
+      "destination": "/api/shipping/biteship/book.js"
+    },
+    {
+      "source": "/api/shipping/biteship/search-area",
+      "destination": "/api/shipping/biteship/search-area.js"
+    },
+    {
+      "source": "/api/shipping/biteship/gojek-areas",
+      "destination": "/api/shipping/biteship/gojek-areas.js"
+    },
+    {
+      "source": "/api/shipping/biteship/gojek-areas/:id",
+      "destination": "/api/shipping/biteship/gojek-areas/[id].js"
+    },
+    {
+      "source": "/api/shipping/biteship/bjs-express-areas",
+      "destination": "/api/shipping/biteship/bjs-express-areas.js"
+    },
+    {
+      "source": "/api/shipping/biteship/bjs-express-areas/:id",
+      "destination": "/api/shipping/biteship/bjs-express-areas/[id].js"
+    },
+    {
+      "source": "/api/shipping/biteship/bjs-express-areas/bulk-import",
+      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
+    },
+    {
+      "source": "/api/shipping/rajaongkir/subdistricts",
+      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
+    },
+    {
+      "source": "/api/shipping/biteship/check-rates",
+      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
+    },
+    {
+      "source": "/api/shipping/biteship/update-reference-rates",
+      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
+    },
+    {
+      "source": "/api/couriers",
+      "destination": "/api/couriers.js"
+    },
+    {
+      "source": "/api/couriers/:id",
+      "destination": "/api/couriers.js"
+    },
+    {
+      "source": "/api/bjs-express/orders",
+      "destination": "/api/bjs-express/orders.js"
+    },
+    {
+      "source": "/api/bjs-express/assign",
+      "destination": "/api/bjs-express/orders.js"
+    },
+    {
+      "source": "/api/bjs-express/cancel-assignment",
+      "destination": "/api/bjs-express/orders.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/api/shipping/biteship/check-rates",
+      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
+    },
+    {
+      "source": "/api/shipping/biteship/update-reference-rates",
+      "destination": "/api/shipping/biteship/bjs-express-areas/bulk-import.js"
+    }
   ]
 }

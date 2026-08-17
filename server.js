@@ -290,7 +290,7 @@ app.get("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
 
 app.post("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
   try {
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name, dest_lat, dest_lng } = req.body;
     if (!district_name || !city_name || !province_name || !postal_code) {
       return res.status(400).json({ message: "Field wajib tidak lengkap." });
     }
@@ -314,6 +314,8 @@ app.post("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
         etd: etd || "6 - 8 Hours",
         max_weight_gram: Number(max_weight_gram) || 5000,
         service_name: service_name || "BJS Express",
+        dest_lat: dest_lat ? Number(dest_lat) : null,
+        dest_lng: dest_lng ? Number(dest_lng) : null,
       })
       .select()
       .single();
@@ -329,7 +331,7 @@ app.post("/api/shipping/biteship/bjs-express-areas", async (req, res) => {
 app.put("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name, dest_lat, dest_lng } = req.body;
 
     if (open_time && cutoff_time && open_time >= cutoff_time) {
       return res.status(400).json({ message: "Jam buka harus lebih awal dari jam cut-off." });
@@ -351,6 +353,8 @@ app.put("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
         etd: etd || "6 - 8 Hours",
         max_weight_gram: Number(max_weight_gram) || 5000,
         service_name: service_name || "BJS Express",
+        dest_lat: dest_lat ? Number(dest_lat) : null,
+        dest_lng: dest_lng ? Number(dest_lng) : null,
       })
       .eq("id", id)
       .select()
@@ -380,6 +384,136 @@ app.delete("/api/shipping/biteship/bjs-express-areas/:id", async (req, res) => {
   }
 });
 
+
+app.post("/api/shipping/biteship/check-rates", async (req, res) => {
+  try {
+    const { destination_id, destination_name, weight_gram = 5000 } = req.body;
+
+    if (!destination_id) {
+      return res.status(400).json({ message: "destination_id wajib diisi." });
+    }
+
+    const { data: area, error: areaError } = await supabase
+      .from("bjs_express_areas")
+      .select("dest_lat, dest_lng, district_name, village_name")
+      .eq("id", destination_id)
+      .single();
+
+    if (areaError || !area) {
+      return res.status(404).json({ message: "Area BJS Express tidak ditemukan." });
+    }
+
+    if (!area.dest_lat || !area.dest_lng) {
+      return res.status(400).json({ message: "Koordinat destinasi belum diisi untuk area ini." });
+    }
+
+    const originAreaId = process.env.BITESHIP_ORIGIN_POSTAL || "";
+
+    const ratesPayload = {
+      origin: {
+        location_id: originAreaId,
+        latitude: ORIGIN.latitude,
+        longitude: ORIGIN.longitude,
+      },
+      destination: {
+        location_id: destination_id,
+        latitude: Number(area.dest_lat),
+        longitude: Number(area.dest_lng),
+      },
+      weight: Number(weight_gram),
+      couriers: "gojek",
+    };
+
+    const ratesRes = await fetch(`${BITESHIP_BASE}/v1/rates/couriers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: API_KEY,
+      },
+      body: JSON.stringify(ratesPayload),
+    });
+
+    const ratesJson = await ratesRes.json();
+
+    if (!ratesRes.ok || ratesJson.meta?.status !== "success") {
+      return res.status(ratesJson.meta?.code || 500).json({
+        message: ratesJson.meta?.message || "Gagal mengambil rates dari Biteship.",
+      });
+    }
+
+    const gojekPricing = (ratesJson.data || []).find(
+      (item) => item.courier_code === "gojek" || item.company === "gojek"
+    );
+
+    if (!gojekPricing) {
+      return res.status(404).json({
+        success: false,
+        message: "Gojek tidak tersedia untuk rute ini.",
+        available_couriers: (ratesJson.data || []).map((item) => item.courier_code),
+      });
+    }
+
+    res.json({
+      success: true,
+      reference_rate: gojekPricing.shipping_fee || gojekPricing.price || 0,
+      currency: gojekPricing.currency || "IDR",
+      courier: "gojek",
+      service_name: gojekPricing.courier_service_name,
+      duration: gojekPricing.duration,
+      checked_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Biteship check-rates error:", err);
+    res.status(500).json({ message: "Gagal mengecek rates Biteship.", details: err.message });
+  }
+});
+
+app.post("/api/shipping/biteship/update-reference-rates", async (req, res) => {
+  try {
+    const { areas } = req.body;
+
+    if (!Array.isArray(areas) || areas.length === 0) {
+      return res.status(400).json({ message: "Data area kosong." });
+    }
+
+    let updated = 0;
+    const results = [];
+
+    for (const area of areas) {
+      const { id, reference_rate, reference_updated_at } = area;
+
+      if (!id) continue;
+
+      const updateData = {
+        reference_rate: Number(reference_rate) || 0,
+        reference_updated_at: reference_updated_at || new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from("bjs_express_areas")
+        .update(updateData)
+        .eq("id", id);
+
+      if (error) {
+        results.push({ id, success: false, error: error.message });
+        continue;
+      }
+
+      updated++;
+      results.push({ id, success: true });
+    }
+
+    res.json({
+      success: true,
+      updated,
+      failed: areas.length - updated,
+      results,
+    });
+  } catch (err) {
+    console.error("Update reference rates error:", err);
+    res.status(500).json({ message: "Gagal update reference rates.", details: err.message });
+  }
+});
 app.post("/api/shipping/biteship/bjs-express-areas/bulk-import", async (req, res) => {
   try {
     const {
