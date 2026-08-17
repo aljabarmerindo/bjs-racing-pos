@@ -22,7 +22,7 @@ async function handleGet(req, res) {
   try {
     const { data, error } = await supabase
       .from("bjs_express_areas")
-      .select("*")
+      .select("id, subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, created_at, updated_at, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name, village_name, reference_rate, reference_updated_at, origin_lat, origin_lng, dest_lat, dest_lng")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -38,7 +38,7 @@ async function handleGet(req, res) {
 
 async function handlePost(req, res) {
   try {
-    const { subdistrict_id, district_name, city_name, province_name, postal_code, village_name, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name } = req.body;
+    const { subdistrict_id, district_name, city_name, province_name, postal_code, village_name, is_active, notes, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name, dest_lat, dest_lng } = req.body;
     if (!district_name || !city_name || !province_name || !postal_code) {
       return res.status(400).json({ message: "Field wajib tidak lengkap." });
     }
@@ -60,8 +60,10 @@ async function handlePost(req, res) {
         etd: etd || "6 - 8 Hours",
         max_weight_gram: Number(max_weight_gram) || 5000,
         service_name: service_name || "BJS Express",
+        dest_lat: dest_lat ? Number(dest_lat) : null,
+        dest_lng: dest_lng ? Number(dest_lng) : null,
       })
-      .select()
+      .select("id, subdistrict_id, district_name, city_name, province_name, postal_code, is_active, notes, created_at, updated_at, open_time, cutoff_time, shipping_cost, etd, max_weight_gram, service_name, village_name, reference_rate, reference_updated_at, origin_lat, origin_lng, dest_lat, dest_lng")
       .single();
 
     if (error) {
