@@ -99,7 +99,7 @@ async function handleCheckRates(req, res) {
 
     const { data: area, error: areaError } = await supabase
       .from("bjs_express_areas")
-      .select("dest_lat, dest_lng, district_name, village_name")
+      .select("subdistrict_id, dest_lat, dest_lng, district_name, village_name")
       .eq("id", destination_id)
       .single();
 
@@ -120,7 +120,7 @@ async function handleCheckRates(req, res) {
         longitude: ORIGIN.longitude,
       },
       destination: {
-        location_id: destination_id,
+        location_id: area.subdistrict_id || destination_id,
         latitude: Number(area.dest_lat),
         longitude: Number(area.dest_lng),
       },
