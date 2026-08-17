@@ -171,7 +171,9 @@ async function handleCheckRates(req, res) {
 
     const pricing = ratesJson.pricing || ratesJson.data || [];
     const gojekPricing = pricing.find(
-      (item) => item.courier_code === "gojek" || item.company === "gojek"
+      (item) => item.courier_service_code === "same_day" && (item.courier_code === "gojek" || item.company === "gojek")
+    ) || pricing.find(
+      (item) => item.courier_service_code === "instant" && (item.courier_code === "gojek" || item.company === "gojek")
     );
 
     if (!gojekPricing) {
