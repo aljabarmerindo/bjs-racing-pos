@@ -111,21 +111,30 @@ async function handleCheckRates(req, res) {
       return res.status(400).json({ message: "Koordinat destinasi belum diisi untuk area ini." });
     }
 
-    const originAreaId = process.env.BITESHIP_ORIGIN_POSTAL || "";
+    const origin = { latitude: ORIGIN.latitude, longitude: ORIGIN.longitude };
+    const destination = {
+      latitude: Number(area.dest_lat),
+      longitude: Number(area.dest_lng),
+      postal_code: area.subdistrict_id ? String(area.subdistrict_id).slice(-5) : "",
+    };
+
+    const weight = Math.max(1, Math.round(Number(weight_gram) || 5000));
+    const couriers = String(process.env.BITESHIP_COURIERS || "gojek").replace(/\s+/g, "");
 
     const ratesPayload = {
-      origin: {
-        location_id: originAreaId,
-        latitude: ORIGIN.latitude,
-        longitude: ORIGIN.longitude,
-      },
-      destination: {
-        location_id: area.subdistrict_id || destination_id,
-        latitude: Number(area.dest_lat),
-        longitude: Number(area.dest_lng),
-      },
-      weight: Number(weight_gram),
-      couriers: ["gojek"],
+      origin,
+      destination,
+      couriers,
+      items: [
+        {
+          name: "Pesanan BJS Racing",
+          description: "Pakaian & sparepart motor",
+          length: 10,
+          width: 10,
+          height: 10,
+          weight,
+        },
+      ],
     };
 
     console.log("[Biteship] rates payload:", JSON.stringify(ratesPayload));
@@ -158,7 +167,8 @@ async function handleCheckRates(req, res) {
       });
     }
 
-    const gojekPricing = (ratesJson.data || []).find(
+    const pricing = ratesJson.pricing || ratesJson.data || [];
+    const gojekPricing = pricing.find(
       (item) => item.courier_code === "gojek" || item.company === "gojek"
     );
 
@@ -166,7 +176,7 @@ async function handleCheckRates(req, res) {
       return res.status(404).json({
         success: false,
         message: "Gojek tidak tersedia untuk rute ini.",
-        available_couriers: (ratesJson.data || []).map((item) => item.courier_code),
+        available_couriers: pricing.map((item) => item.courier_code),
       });
     }
 
