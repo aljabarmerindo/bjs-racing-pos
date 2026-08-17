@@ -136,7 +136,6 @@ async function handleCheckRates(req, res) {
       ],
     };
 
-    console.log("[Biteship] rates payload:", JSON.stringify(ratesPayload));
 
     const ratesRes = await fetch(`${BITESHIP_BASE}/v1/rates/couriers`, {
       method: "POST",
@@ -148,22 +147,18 @@ async function handleCheckRates(req, res) {
     });
 
     const ratesText = await ratesRes.text();
-    console.log("[Biteship] rates response status:", ratesRes.status);
-    console.log("[Biteship] rates response body:", ratesText);
 
     let ratesJson = {};
     try {
       ratesJson = JSON.parse(ratesText);
     } catch (e) {
-      console.error("[Biteship] Failed to parse response:", e);
-      return res.status(500).json({ message: "Gagal membaca respons Biteship.", details: ratesText });
+        return res.status(500).json({ message: "Gagal membaca respons Biteship.", details: ratesText });
     }
 
     if (!ratesRes.ok || ratesJson.meta?.status !== "success") {
       return res.status(ratesJson.meta?.code || 500).json({
         message: ratesJson.meta?.message || "Gagal mengambil rates dari Biteship.",
-        details: ratesJson,
-      });
+        });
     }
 
     const pricing = ratesJson.pricing || ratesJson.data || [];
