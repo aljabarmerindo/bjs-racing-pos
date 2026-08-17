@@ -676,7 +676,13 @@ export default function BjsExpressAreas() {
                             maximumFractionDigits: 0,
                           }).format(area.shipping_cost || 0)}
                     </td>
-                    <td className="px-6 py-4">{area.etd || "-"}</td>\n                    <td className="px-6 py-4">\n                      {area.reference_rate ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(area.reference_rate) : "-"}\n                    </td>\n                    <td className="px-6 py-4">\n                      {area.reference_updated_at ? new Date(area.reference_updated_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "-"}\n                    </td>
+                    <td className="px-6 py-4">{area.etd || "-"}</td>
+                    <td className="px-6 py-4">
+                      {area.reference_updated_at ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(area.reference_rate || 0) : "-"}
+                    </td>
+                    <td className="px-6 py-4">
+                      {area.reference_updated_at ? new Date(area.reference_updated_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "-"}
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
