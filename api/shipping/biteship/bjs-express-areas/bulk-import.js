@@ -152,6 +152,7 @@ async function handleCheckRates(req, res) {
     });
 
     const ratesText = await ratesRes.text();
+    console.log("[Biteship check-rates] status:", ratesRes.status, "body:", ratesText);
 
     let ratesJson = {};
     try {
