@@ -125,7 +125,7 @@ async function handleCheckRates(req, res) {
         longitude: Number(area.dest_lng),
       },
       weight: Number(weight_gram),
-      couriers: "gojek",
+      couriers: ["gojek"],
     };
 
     console.log("[Biteship] rates payload:", JSON.stringify(ratesPayload));
