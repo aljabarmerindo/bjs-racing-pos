@@ -22,6 +22,7 @@ function ProductModal({
     stok: "",
     stok_min: "",
     catatan: "",
+    search_synonyms: "",
     status: "Aktif",
     satuan_dasar: "Pcs",
     satuan_pembelian: "",
@@ -56,6 +57,7 @@ function ProductModal({
           stok: String(productToEdit.stok || ""),
           stok_min: String(productToEdit.stok_min || ""),
           catatan: productToEdit.catatan || "",
+          search_synonyms: productToEdit.search_synonyms || "",
           status: productToEdit.status || "Aktif",
           satuan_dasar: productToEdit.satuan_dasar || "Pcs",
           satuan_pembelian: productToEdit.satuan_pembelian || "",
@@ -613,6 +615,25 @@ function ProductModal({
                   rows="3"
                   className="w-full p-2 border rounded"
                 ></textarea>
+              </div>
+              <div className="md:col-span-2">
+                <label
+                  htmlFor="search_synonyms"
+                  className="block mb-1 text-sm font-medium text-slate-700"
+                >
+                  Sinonim Pencarian
+                </label>
+                <input
+                  type="text"
+                  id="search_synonyms"
+                  value={product.search_synonyms}
+                  onChange={handleChange}
+                  placeholder="Pylox, Cat Semprot, Spray Paint"
+                  className="w-full p-2 border rounded"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Pisahkan dengan koma. Sinonim membantu pelanggan menemukan produk ini saat mencari.
+                </p>
               </div>
             </div>
           </div>
