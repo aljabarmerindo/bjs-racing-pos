@@ -29,6 +29,13 @@ function normalizeMediaUrl(url) {
   return url;
 }
 
+function getYouTubeId(url) {
+  if (!url) return null;
+  const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?)|(?:shorts\/))\??v?=?([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[7] && match[7].length === 11 ? match[7] : null;
+}
+
 const ManajemenFeed = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +96,18 @@ const ManajemenFeed = () => {
     };
     init();
   }, []);
+
+  useEffect(() => {
+    if (form.post_type === "video" && form.youtube_url) {
+      const ytId = getYouTubeId(form.youtube_url);
+      if (ytId && form.media_url !== `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`) {
+        setForm((prev) => ({
+          ...prev,
+          media_url: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+        }));
+      }
+    }
+  }, [form.post_type, form.youtube_url]);
 
   const handleAdd = () => {
     setEditingPost(null);
@@ -506,7 +525,14 @@ const ManajemenFeed = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Media URL</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Media URL
+                  {form.post_type === "video" && (
+                    <span className="ml-2 text-xs text-slate-500 font-normal">
+                      (otomatis pakai thumbnail YouTube jika diisi)
+                    </span>
+                  )}
+                </label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="flex items-center gap-2 px-3 py-2 bg-orange-50 text-orange-700 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors text-sm font-semibold">
@@ -547,12 +573,12 @@ const ManajemenFeed = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">YouTube URL (untuk tipe video)</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">YouTube URL (untuk tipe video / shorts)</label>
                 <input
                   type="text"
                   value={form.youtube_url}
                   onChange={(e) => setForm({ ...form, youtube_url: e.target.value })}
-                  placeholder="https://www.youtube.com/watch?v=..."
+                  placeholder="https://www.youtube.com/watch?v=... atau https://youtube.com/shorts/..."
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
