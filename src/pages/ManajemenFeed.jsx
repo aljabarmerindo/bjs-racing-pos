@@ -148,9 +148,14 @@ const ManajemenFeed = () => {
     console.log("[ManajemenFeed] save result:", result);
 
     if (result.error) {
-      const message = result.error.message || result.error.details || JSON.stringify(result.error);
+      const errorMessage = result.error.message || result.error.details || result.error.hint || JSON.stringify(result.error);
       console.error("[ManajemenFeed] save error:", result.error);
-      alert(`Gagal ${editingPost ? "memperbarui" : "menambah"} post: ${message}`);
+
+      if (result.error.code === "42P01" || result.error.message?.includes("does not exist")) {
+        alert("Gagal menyimpan: tabel feed_posts belum dibuat. Jalankan migration Supabase terlebih dahulu. Cek docs/google-drive-setup.md atau file supabase/migrations/2026_08_20_create_feed_posts.sql");
+      } else {
+        alert(`Gagal ${editingPost ? "memperbarui" : "menambah"} post: ${errorMessage}`);
+      }
     } else {
       setIsModalOpen(false);
       fetchPosts();
@@ -213,15 +218,27 @@ const ManajemenFeed = () => {
       return;
     }
 
-    const { data } = await supabase
-      .from("products")
-      .select("id, nama, kode_produk, merek, harga_jual")
-      .or(`nama.ilike.%${query}%,merek.ilike.%${query}%,kode_produk.ilike.%${query}%`)
-      .limit(10);
+    try {
+      const { data } = await supabase.rpc("search_products", {
+        search_term: query,
+        merek_filter: null,
+        kategori_filter: null,
+        status_filter: "Aktif",
+        low_stock_only: false,
+        supplier_filter: null,
+        ukuran_filter: null,
+        lini_produk_filter: null,
+        price_range: "semua",
+      });
 
-    console.log("[ManajemenFeed] product search results:", data);
-    setProductResults(data || []);
-    setShowProductDropdown(true);
+      console.log("[ManajemenFeed] product search results:", data);
+      setProductResults(data || []);
+      setShowProductDropdown(true);
+    } catch (err) {
+      console.error("[ManajemenFeed] product search error:", err);
+      setProductResults([]);
+      setShowProductDropdown(false);
+    }
   };
 
   const handleSelectProduct = (product) => {
