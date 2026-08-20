@@ -36,6 +36,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/upload-drive",
+      "destination": "/api/couriers.js"
+    },
+    {
       "source": "/api/shipping/internal/rates",
       "destination": "/api/shipping/internal/rates.js"
     },
