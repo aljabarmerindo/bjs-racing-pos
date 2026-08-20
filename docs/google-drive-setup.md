@@ -91,11 +91,14 @@ Key JSON ini akan digunakan oleh POS app untuk otentikasi ke Google Drive API.
 Edit file `.env` di direktori POS app (`/workspaces/bjs-racing-pos/.env`):
 
 ### Opsi A: Simpan JSON sebagai string (untuk Vercel)
-Tambahkan 2 baris:
+Tambahkan 3 baris:
 ```
-GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key_id":"...","private_key":"-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----","client_email":"feed-uploader@bjs-racing-feed.iam.gserviceaccount.com","client_id":"...","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs/...","universe_domain":"googleapis.com"}
+GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
+VITE_GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
 ```
+
+Catatan: `GOOGLE_DRIVE_FOLDER_ID` untuk backend, `VITE_GOOGLE_DRIVE_FOLDER_ID` untuk frontend (Vite hanya expose env var prefixed `VITE_` ke browser).
 
 ### Opsi B: Simpan JSON sebagai file (untuk lokal/VPS)
 1. Simpan file JSON yang terdownload sebagai `/workspaces/bjs-racing-pos/service-account.json`
@@ -103,6 +106,7 @@ GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
    ```
    GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH=/workspace/bjs-racing-pos/service-account.json
    GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
+   VITE_GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
    ```
 
 Catatan untuk Vercel: jika memakai Opsi B, file `service-account.json` harus di-upload ke Vercel sebagai file environment variable, atau lebih simpel pakai Opsi A dengan paste seluruh JSON ke environment variable.
@@ -111,6 +115,7 @@ Catatan untuk Vercel: jika memakai Opsi B, file `service-account.json` harus di-
 ```
 GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 GOOGLE_DRIVE_FOLDER_ID=bjs-feed-images-folder-id
+VITE_GOOGLE_DRIVE_FOLDER_ID=bjs-feed-images-folder-id
 ```
 
 ---
@@ -181,7 +186,8 @@ npm install googleapis multer
 ### Testing Production
 1. Set environment variables di Vercel dashboard (Settings → Environment Variables):
    - `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`
-   - `GOOGLE_DRIVE_FOLDER_ID`
+   - `GOOGLE_DRIVE_FOLDER_ID` (untuk backend/serverless function)
+   - `VITE_GOOGLE_DRIVE_FOLDER_ID` (untuk frontend, value yang sama dengan `GOOGLE_DRIVE_FOLDER_ID`)
 2. Deploy ulang POS app
 3. Test ulang langkah 1-7 seperti testing lokal
 
@@ -226,6 +232,7 @@ Format ini adalah direct view link, bukan share link yang biasa. Jika ingin paka
 | File tidak terlihat oleh publik | Cek permission file di Google Drive, pastikan sudah di-set "Anyone with the link → Viewer" |
 | Folder tidak ditemukan service account | Pastikan folder sudah di-share dengan email service account dan grant Editor |
 | Error CORS | Upload harus lewat backend API, jangan langsung dari browser ke Google Drive API |
+| Warning "Google Drive folder ID belum diatur" muncul meskipun env var sudah diisi | Di Vercel, pastikan `VITE_GOOGLE_DRIVE_FOLDER_ID` sudah ditambahkan. Di lokal, pastikan `.env` memiliki `VITE_GOOGLE_DRIVE_FOLDER_ID`. Backend menggunakan `GOOGLE_DRIVE_FOLDER_ID`, frontend menggunakan `VITE_GOOGLE_DRIVE_FOLDER_ID` |
 | Error "No more than 12 Serverless Functions" | Vercel Hobby plan limit. Upload-drive di-merge ke `api/couriers.js` untuk hemat slot. Jika nanti butuh lebih banyak endpoint, pertimbangkan upgrade ke Pro plan |
 
 ### Vercel Hobby Plan Limit
@@ -244,7 +251,7 @@ Format ini adalah direct view link, bukan share link yang biasa. Jika ingin paka
 - [ ] Service account dibuat dan JSON key terdownload
 - [ ] Folder `bjs-feed-images` dibuat dan sharing diset "Anyone with link → Viewer"
 - [ ] Folder di-share dengan service account email (Editor)
-- [ ] Environment variables di POS app sudah diisi (`GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` atau path, dan `GOOGLE_DRIVE_FOLDER_ID`)
+- [ ] Environment variables di POS app sudah diisi (`GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` atau path, `GOOGLE_DRIVE_FOLDER_ID` untuk backend, dan `VITE_GOOGLE_DRIVE_FOLDER_ID` untuk frontend)
 - [ ] `npm install googleapis multer` sudah dijalankan
 - [ ] Testing lokal berhasil (upload sukses, URL terisi otomatis)
 - [ ] Environment variables di Vercel sudah diisi
