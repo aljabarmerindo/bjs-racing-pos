@@ -389,7 +389,7 @@ const ManajemenFeed = () => {
                     <p className="text-xs text-red-500">{uploadError}</p>
                   )}
 
-                  {!driveFolderId && (
+                  {!process.env.GOOGLE_DRIVE_FOLDER_ID && (
                     <p className="text-xs text-slate-400">Google Drive folder ID belum diatur. Upload manual akan diaktifkan jika env var diisi.</p>
                   )}
                 </div>
