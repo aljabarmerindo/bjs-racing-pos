@@ -59,6 +59,7 @@ async function handleUploadDrive(req, res) {
         body: Readable.from(buffer),
       },
       fields: "id, webViewLink, webContentLink",
+      supportsAllDrives: true,
     });
 
     const fileId = result.data.id;
@@ -69,6 +70,7 @@ async function handleUploadDrive(req, res) {
         role: "reader",
         type: "anyone",
       },
+      supportsAllDrives: true,
     });
 
     res.status(200).json({
