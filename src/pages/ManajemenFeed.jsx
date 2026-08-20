@@ -258,7 +258,7 @@ const ManajemenFeed = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    console.log("[ManajemenFeed] file selected:", file.name, file.type, file.size);
+    console.log("[ManajemenFeed][UPLOAD_VERSION=v2-supabase-storage] file selected:", file.name, file.type, file.size);
 
     setSelectedFile(file);
     setUploadError("");
@@ -289,7 +289,7 @@ const ManajemenFeed = () => {
       setForm((prev) => ({ ...prev, media_url: publicUrl }));
       setUploadError("");
     } catch (err) {
-      console.error("[ManajemenFeed] upload error:", err);
+      console.error("[ManajemenFeed][UPLOAD_VERSION=v2-supabase-storage] upload error:", err);
       setUploadError("Gagal upload gambar. Silakan paste URL manual.");
     } finally {
       setUploading(false);
