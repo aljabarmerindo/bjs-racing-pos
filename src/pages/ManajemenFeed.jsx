@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { FiPlus, FiEdit, FiTrash2, FiMessageSquare, FiX, FiUpload } from "react-icons/fi";
+import imageCompression from "browser-image-compression";
 
 const POST_TYPES = [
   { value: "image", label: "Gambar" },
@@ -263,47 +264,31 @@ const ManajemenFeed = () => {
     const localPreview = URL.createObjectURL(file);
     setPreviewUrl(localPreview);
 
-    const driveFolderId = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "";
-    console.log("[ManajemenFeed] driveFolderId:", driveFolderId);
-    if (!driveFolderId) {
-      setUploadError("VITE_GOOGLE_DRIVE_FOLDER_ID belum diatur di environment variables.");
-      return;
-    }
-
     setUploading(true);
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
       });
 
-      const payload = {
-        filename: file.name,
-        mimeType: file.type,
-        base64,
-      };
+      const filePath = `feed-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
 
-      const res = await fetch("/api/upload-drive", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const { error: uploadError } = await supabase.storage
+        .from("feed-images")
+        .upload(filePath, compressedFile);
 
-      console.log("[ManajemenFeed] upload response status:", res.status);
-      const data = await res.json();
-      console.log("[ManajemenFeed] upload response data:", data);
+      if (uploadError) throw uploadError;
 
-      if (!res.ok) {
-        throw new Error(data.message || "Gagal upload");
-      }
+      const { data: { publicUrl } } = supabase.storage
+        .from("feed-images")
+        .getPublicUrl(filePath);
 
-      setForm((prev) => ({ ...prev, media_url: data.url }));
+      setForm((prev) => ({ ...prev, media_url: publicUrl }));
       setUploadError("");
     } catch (err) {
       console.error("[ManajemenFeed] upload error:", err);
-      setUploadError("Gagal upload ke Google Drive. Silakan paste URL manual.");
+      setUploadError("Gagal upload gambar. Silakan paste URL manual.");
     } finally {
       setUploading(false);
     }

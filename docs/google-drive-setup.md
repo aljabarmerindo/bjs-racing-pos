@@ -1,177 +1,83 @@
-# Google Drive Integration — Setup Lengkap GCP & Konfigurasi POS
+# Feed Image Storage — Setup Supabase Storage untuk POS
 
 ## Fitur
-- Upload gambar langsung dari halaman Manajemen Feed ke Google Drive
-- Auto-normalisasi URL Google Drive (share link → direct view link)
+- Upload gambar langsung dari halaman Manajemen Feed ke Supabase Storage
+- Otomatis kompres gambar sebelum upload (max 1MB, max 1200px)
+- URL publik langsung dari Supabase Storage
 - Pilih multiple produk terkait per post (search by nama, merek, kode produk)
 - Moderasi komentar (tandai spam, hapus komentar)
 
 ---
 
 ## Prasyarat
-- Akses ke [Google Cloud Console](https://console.cloud.google.com/)
-- Hak akses untuk menambah environment variables di POS app
-- Folder Google Drive khusus untuk menyimpan gambar feed
+- Akses ke Supabase Dashboard (`https://supabase.com/dashboard`)
+- Hak akses untuk membuat Storage bucket
+- Bucket `feed-images` sudah dibuat di Supabase Storage
 
 ---
 
-## Langkah 1: Buat Project di Google Cloud Platform (GCP)
+## Langkah 1: Buat Storage Bucket di Supabase
 
-1. Buka https://console.cloud.google.com/
-2. Klik **project selector** di pojok kiri atas (nama project saat ini)
-3. Klik **New Project**
-4. Isi **Project name**: `bjs-racing-feed` (atau nama lain)
-5. Klik **Create**
-6. Setelah created, pastikan project yang aktif di pojok kiri atas adalah project yang baru dibuat
+1. Buka https://supabase.com/dashboard
+2. Pilih project `bjs-racing-store` (project ID: `ykotzsmncvyfveypeevb`)
+3. Di sidebar kiri, klik **Storage**
+4. Klik **New bucket**
+5. Isi:
+   - **Name**: `feed-images`
+   - **Public bucket**: ON (aktifkan)
+   - **File size limit**: 50MB (atau sesuai kebutuhan)
+   - **Allowed MIME types**: biarkan kosong untuk允许 semua
+6. Klik **Create bucket**
 
----
+### Set Policy agar Publik Bisa Baca Gambar
 
-## Langkah 2: Enable Google Drive API
+1. Di dalam bucket `feed-images`, klik tab **Policies**
+2. Klik **New policy**
+3. Pilih **For full customization**
+4. Isi:
+   - **Policy name**: `Public can view feed images`
+   - **Allowed operation**: pilih **SELECT**
+   - **Target roles**: pilih **anon** (public)
+   - **Using expression**: `true`
+5. Klik **Review** → **Save policy**
 
-1. Di GCP Console, buka menu **APIs & Services → Library**
-2. Di kolom pencarian, ketik: **Google Drive API**
-3. Klik hasil **Google Drive API**
-4. Klik tombol **Enable**
-5. Tunggu beberapa detik hingga API aktif
+Alternatif: jalankan SQL migration ini di Supabase SQL Editor:
 
----
-
-## Langkah 3: Buat Service Account
-
-Service account adalah identitas robot yang bisa mengakses Google Drive atas nama project, tanpa perlu login akun manusia.
-
-1. Di GCP Console, buka **APIs & Services → Credentials**
-2. Klik **Create Credentials** → pilih **Service account**
-3. Isi **Service account name**: `feed-uploader`
-4. Klik **Create and Continue**
-5. **Role**: pilih **Editor** (atau lebih aman: cari dan pilih `Drive File` / `roles/drive.file` untuk akses terbatas ke folder tertentu)
-6. Klik **Continue**
-7. Biarkan bagian **Grant users access to this service account** kosong
-8. Klik **Done**
-
-Catatan: `roles/drive.file` hanya bisa mengakses file yang dibuat atau dibuka oleh service account tersebut, sehingga lebih aman daripada `Editor`.
-
----
-
-## Langkah 4: Buat Service Account Key (JSON)
-
-Key JSON ini akan digunakan oleh POS app untuk otentikasi ke Google Drive API.
-
-1. Di halaman **Service Accounts**, klik service account yang baru dibuat (`feed-uploader`)
-2. Buka tab **Keys**
-3. Klik **Add Key** → **Create new key**
-4. Pilih **Key type**: **JSON**
-5. Klik **Create**
-6. File JSON akan otomatis terdownload. Simpan dengan aman.
-7. **PENTING**: File ini berisi kredensial akses Google Drive. Jangan upload ke GitHub atau expose ke public.
-
----
-
-## Langkah 5: Siapkan Folder di Google Drive
-
-PENTING: Service Account tidak memiliki kuota penyimpanan di "My Drive". Folder upload harus ditempatkan di **Shared Drive**.
-
-1. Buka https://drive.google.com/
-2. Di sidebar kiri, klik **Shared drives**
-3. Klik **New** → buat Shared Drive dengan nama `BJS Feed Storage`
-4. Buka Shared Drive tersebut, klik **New** → **Folder**
-5. Nama folder: `bjs-feed-images`
-6. Klik **Create**
-7. Buka folder yang baru dibuat
-8. Salin **Folder ID** dari URL:
-   - URL akan terlihat seperti: `https://drive.google.com/drive/folders/1aBcD2EfGhIjKlMnOpQrStUvWxYz123456`
-   - Bagian setelah `/folders/` adalah **Folder ID**: `1aBcD2EfGhIjKlMnOpQrStUvWxYz123456`
-9. Set sharing folder:
-   - Klik kanan folder → **Share**
-   - Ubah menjadi **Anyone with the link → Viewer**
-   - Klik **Copy link** untuk testing nanti
-10. Klik **Manage members** di Shared Drive, tambahkan service account email:
-    - Email service account terlihat seperti: `feed-uploader@bjs-racing-feed.iam.gserviceaccount.com`
-    - Paste di kolom invite
-    - Grant permission: **Content manager** (atau **Manager** agar bisa upload & set permission)
-    - Klik **Send**
-
----
-
-## Langkah 6: Konfigurasi Environment Variables di POS App
-
-Edit file `.env` di direktori POS app (`/workspaces/bjs-racing-pos/.env`):
-
-### Opsi A: Simpan JSON sebagai string (untuk Vercel)
-Tambahkan 3 baris:
-```
-GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
-GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
-VITE_GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
-```
-
-Catatan: `GOOGLE_DRIVE_FOLDER_ID` untuk backend, `VITE_GOOGLE_DRIVE_FOLDER_ID` untuk frontend (Vite hanya expose env var prefixed `VITE_` ke browser).
-
-### Opsi B: Simpan JSON sebagai file (untuk lokal/VPS)
-1. Simpan file JSON yang terdownload sebagai `/workspaces/bjs-racing-pos/service-account.json`
-2. Tambahkan di `.env`:
-   ```
-   GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH=/workspace/bjs-racing-pos/service-account.json
-   GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
-   VITE_GOOGLE_DRIVE_FOLDER_ID=1aBcD2EfGhIjKlMnOpQrStUvWxYz123456
-   ```
-
-Catatan untuk Vercel: jika memakai Opsi B, file `service-account.json` harus di-upload ke Vercel sebagai file environment variable, atau lebih simpel pakai Opsi A dengan paste seluruh JSON ke environment variable.
-
-### Juga update `.env.example`
-```
-GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
-GOOGLE_DRIVE_FOLDER_ID=bjs-feed-images-folder-id
-VITE_GOOGLE_DRIVE_FOLDER_ID=bjs-feed-images-folder-id
+```sql
+CREATE POLICY "Public can view feed images"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'feed-images');
 ```
 
 ---
 
-## Langkah 7: Install Dependencies
+## Langkah 2: Environment Variables
 
-```bash
-cd /workspaces/bjs-racing-pos
-npm install googleapis multer
-```
+Tidak perlu environment variable khusus untuk upload feed images. Upload menggunakan Supabase client yang sudah terkonfigurasi di POS app (`src/supabaseClient.js`).
 
-- `googleapis`: library resmi Google untuk mengakses Drive API
-- `multer`: middleware untuk parse multipart/form-data (file upload) di Express/Vercel serverless
+Pastikan `SUPABASE_SERVICE_KEY` dan `PUBLIC_SUPABASE_ANON_KEY` sudah diisi di `.env` dan Vercel environment variables.
 
 ---
 
-## Langkah 8: Cara Kerja Upload di POS App
-
-### Backend (Production di Vercel)
-- File: `api/couriers.js`
-- Endpoint: `POST /api/upload-drive`
-- Menerima file via `multipart/form-data`
-- Upload ke Google Drive menggunakan service account
-- Set permission file menjadi `anyone with link → Viewer`
-- Return JSON:
-  ```json
-  {
-    "success": true,
-    "id": "FILE_ID",
-    "url": "https://drive.google.com/uc?export=view&id=FILE_ID"
-  }
-  ```
-
-### Backend (Lokal development)
-- File: `server.js`
-- Endpoint: `POST /api/upload-drive`
-- Sama seperti production, tapi berjalan di Express dev server (`localhost:3001`)
+## Langkah 3: Cara Kerja Upload di POS App
 
 ### Frontend
 - File: `src/pages/ManajemenFeed.jsx`
 - Admin klik **"Upload dari Komputer"**, pilih gambar
 - Preview lokal muncul
-- Frontend kirim file ke `/api/upload-drive` via `fetch` + `FormData`
-- Jika sukses, URL otomatis terisi di field **Media URL**
+- Frontend kompres gambar (max 1MB, max 1200px) menggunakan `browser-image-compression`
+- Upload langsung ke Supabase Storage bucket `feed-images`
+- URL publik otomatis terisi di field **Media URL**
 - Jika gagal, tampilkan error dan admin bisa paste URL manual
+
+### Upload Flow
+```
+File input → Kompres → Upload ke Supabase Storage → Get public URL → Set ke form state
+```
 
 ---
 
-## Langkah 9: Testing
+## Langkah 4: Testing
 
 ### Testing Lokal
 1. Jalankan POS app:
@@ -186,24 +92,19 @@ npm install googleapis multer
 6. Klik **Upload dari Komputer**, pilih gambar
 7. Verifikasi:
    - Preview muncul
-   - URL otomatis terisi di field Media URL
-   - File muncul di Google Drive folder `bjs-feed-images`
-   - URL bisa dibuka di browser baru
+   - URL otomatis terisi di field Media URL (format: `https://ykotzsmncvyfveypeevb.supabase.co/storage/v1/object/public/feed-images/...`)
+   - File bisa diakses via URL tersebut
 
 ### Testing Production
-1. Set environment variables di Vercel dashboard (Settings → Environment Variables):
-   - `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`
-   - `GOOGLE_DRIVE_FOLDER_ID` (untuk backend/serverless function)
-   - `VITE_GOOGLE_DRIVE_FOLDER_ID` (untuk frontend, value yang sama dengan `GOOGLE_DRIVE_FOLDER_ID`)
-2. Deploy ulang POS app
-3. Test ulang langkah 1-7 seperti testing lokal
+1. Deploy POS app ke Vercel
+2. Test langkah 1-7 seperti testing lokal
 
 ---
 
-## Langkah 10: Verifikasi di Store App
+## Langkah 5: Verifikasi di Store App
 
 1. Buka `https://bjsracing.com/blog`
-2. Pastikan post baru dengan gambar Google Drive tampil dengan benar
+2. Pastikan post baru dengan gambar dari Supabase Storage tampil dengan benar
 3. Cek responsive di mobile dan desktop
 4. Klik card, pastikan gambar tampil di halaman detail
 
@@ -212,62 +113,32 @@ npm install googleapis multer
 ## Catatan Penting
 
 ### Keamanan
-- Service account JSON **hanya** ada di backend (POS app environment variables)
-- Jangan pernah expose JSON ke browser atau commit ke Git
-- Gunakan `roles/drive.file` jika memungkinkan untuk pembatasan akses
-- Rotate service account key secara berkala (buat key baru, hapus key lama)
+- Bucket `feed-images` sudah di-set **public** untuk read
+- Policy `SELECT` menggunakan `true` agar publik bisa baca gambar
+- Upload hanya bisa dilakukan oleh admin melalui POS app (menggunakan authenticated Supabase client)
 
-### Google Drive Public Link
-Format URL yang disimpan di database:
+### URL Format
+URL gambar yang disimpan di database:
 ```
-https://drive.google.com/uc?export=view&id=FILE_ID
+https://ykotzsmncvyfveypeevb.supabase.co/storage/v1/object/public/feed-images/feed-1234567890-image.jpg
 ```
 
-Format ini adalah direct view link, bukan share link yang biasa. Jika ingin pakai format lain:
-- `https://drive.google.com/file/d/FILE_ID/view?usp=sharing`
-- Tapi format `uc?export=view&id=` lebih stabil untuk web embedding
+URL ini sudah di-whitelist di CSP Store (`*.supabase.co`), jadi tidak ada masalah keamanan.
 
-### Rate Limit & Backup
-- Google Drive API free tier: cukup untuk penggunaan normal
-- Jika nanti kena rate limit, pertimbangkan migrate ke Cloudinary atau Supabase Storage
-- Manual paste URL tetap tersedia sebagai fallback jika API gagal
-
-### Troubleshooting
-| Masalah | Solusi |
-|---------|--------|
-| Upload gagal, error "credentials tidak diatur" | Cek `.env` atau Vercel env vars, pastikan `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` atau `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH` sudah diisi |
-| Upload gagal, error "Service Accounts do not have storage quota" | Folder harus berada di **Shared Drive**, bukan "My Drive". Buat Shared Drive, pindah folder ke sana, dan tambahkan service account sebagai member |
-| File tidak terlihat oleh publik | Cek permission file di Google Drive, pastikan sudah di-set "Anyone with the link → Viewer" |
-| Folder tidak ditemukan service account | Pastikan folder sudah di-share dengan email service account dan grant Editor, atau letakkan di Shared Drive |
-| Error CORS | Upload harus lewat backend API, jangan langsung dari browser ke Google Drive API |
-| Warning "Google Drive folder ID belum diatur" muncul meskipun env var sudah diisi | Di Vercel, pastikan `VITE_GOOGLE_DRIVE_FOLDER_ID` sudah ditambahkan. Di lokal, pastikan `.env` memiliki `VITE_GOOGLE_DRIVE_FOLDER_ID`. Backend menggunakan `GOOGLE_DRIVE_FOLDER_ID`, frontend menggunakan `VITE_GOOGLE_DRIVE_FOLDER_ID` |
-| Error "No more than 12 Serverless Functions" | Vercel Hobby plan limit. Upload-drive di-merge ke `api/couriers.js` untuk hemat slot. Jika nanti butuh lebih banyak endpoint, pertimbangkan upgrade ke Pro plan |
-
-### Vercel Hobby Plan Limit
-- Maksimal 12 serverless functions per deployment
-- Saat ini POS app menggunakan 13 file API, tapi di-reduce jadi 12 dengan merge `/api/upload-drive` ke `api/couriers.js` via `vercel.json` rewrite
-- Jika nanti perlu menambah endpoint lagi, opsi:
-  1. Upgrade ke Vercel Pro
-  2. Gabungkan lebih banyak endpoint ke file yang ada
-  3. Pindah ke VPS dengan Express (`server.js`) sebagai single deployment
+### Backup
+- Supabase Storage memiliki backup otomatis
+- Jika nanti butuh migrasi ke Cloudinary atau storage lain, cukup ganti bucket name di kode
 
 ---
 
-## Checklist Sebelum Live
+## Troubleshooting
 
-- [ ] GCP project dibuat dan Drive API enabled
-- [ ] Service account dibuat dan JSON key terdownload
-- [ ] Shared Drive `BJS Feed Storage` dibuat
-- [ ] Folder `bjs-feed-images` dibuat di dalam Shared Drive
-- [ ] Folder sharing diset "Anyone with link → Viewer"
-- [ ] Service account email ditambahkan ke Shared Drive sebagai Content manager/Manager
-- [ ] Environment variables di POS app sudah diisi (`GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` atau path, `GOOGLE_DRIVE_FOLDER_ID` untuk backend, dan `VITE_GOOGLE_DRIVE_FOLDER_ID` untuk frontend)
-- [ ] `npm install googleapis multer` sudah dijalankan
-- [ ] Testing lokal berhasil (upload sukses, URL terisi otomatis)
-- [ ] Environment variables di Vercel sudah diisi
-- [ ] Deploy production berhasil
-- [ ] Testing di production berhasil
-- [ ] Post pertama dibuat dan gambar tampil di `https://bjsracing.com/blog`
+| Masalah | Solusi |
+|---------|--------|
+| Upload gagal, error "Bucket not found" | Pastikan bucket `feed-images` sudah dibuat di Supabase Dashboard |
+| Upload gagal, error "Unauthorized" | Cek `SUPABASE_SERVICE_KEY` atau `PUBLIC_SUPABASE_ANON_KEY` sudah diisi |
+| Gambar tidak tampil di Store | Cek policy bucket `feed-images` sudah di-set public (`SELECT` untuk `anon`) |
+| Gambar broken icon | Cek URL gambar valid, pastikan file ada di bucket |
 
 ---
 
@@ -283,19 +154,9 @@ Format ini adalah direct view link, bukan share link yang biasa. Jika ingin paka
 - `src/pages/sitemap.xml.ts` — dynamic sitemap
 - `public/robots.txt` — robots rules
 - `supabase/migrations/2026_08_20_create_feed_posts.sql` — database schema
+- `vercel.json` — CSP headers (sudah include `*.supabase.co`)
 
 ### POS App (`bjs-racing-pos`)
 - `src/pages/ManajemenFeed.jsx` — admin CRUD feed + upload UI
-- `api/couriers.js` — menangani `/api/upload-drive` (Google Drive upload)
-- `server.js` — endpoint `/api/upload-drive` untuk lokal dev
-- `vercel.json` — rewrite `/api/upload-drive` ke `api/couriers.js`
-- `.env.example` — template environment variables
+- `src/supabaseClient.js` — Supabase client configuration
 - `.env` — environment variables lokal
-
----
-
-## Support
-Jika ada pertanyaan atau masalah, cek:
-- [Google Drive API Documentation](https://developers.google.com/drive/api/guides/about-sdk)
-- [googleapis NPM](https://www.npmjs.com/package/googleapis)
-- [Vercel Serverless Functions](https://vercel.com/docs/functions/serverless-functions)
