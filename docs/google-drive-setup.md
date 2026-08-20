@@ -1,7 +1,10 @@
 # Google Drive Integration — Setup Lengkap GCP & Konfigurasi POS
 
-## Ringkasan
-Integrasi ini memungkinkan admin mengupload gambar langsung dari halaman **Manajemen Feed** di POS app ke Google Drive, dan link publik otomatis terisi di form. Upload dilakukan via backend API POS (`/api/upload-drive`) menggunakan service account, sehingga credential Google tidak pernah ke-expose ke browser.
+## Fitur
+- Upload gambar langsung dari halaman Manajemen Feed ke Google Drive
+- Auto-normalisasi URL Google Drive (share link → direct view link)
+- Pilih multiple produk terkait per post (search by nama, merek, kode produk)
+- Moderasi komentar (tandai spam, hapus komentar)
 
 ---
 

@@ -30,27 +30,31 @@ function getDriveClient() {
 
 async function handleUploadDrive(req, res) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file");
+    let payload;
+    try {
+      payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    } catch {
+      return res.status(400).json({ message: "Body harus berupa JSON." });
+    }
 
-    if (!file) {
-      return res.status(400).json({ message: "File tidak ditemukan." });
+    const { filename, mimeType, base64 } = payload || {};
+    if (!base64 || !filename) {
+      return res.status(400).json({ message: "Data file tidak lengkap." });
     }
 
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || "";
     const drive = getDriveClient();
-    const fileName = `${Date.now()}_${file.name}`;
-
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const fileName = `${Date.now()}_${filename}`;
+    const buffer = Buffer.from(base64, "base64");
 
     const result = await drive.files.create({
       requestBody: {
         name: fileName,
         parents: folderId ? [folderId] : undefined,
-        mimeType: file.type,
+        mimeType: mimeType || "application/octet-stream",
       },
       media: {
-        mimeType: file.type,
+        mimeType: mimeType || "application/octet-stream",
         body: buffer,
       },
       fields: "id, webViewLink, webContentLink",

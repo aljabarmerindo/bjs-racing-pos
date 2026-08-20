@@ -122,10 +122,48 @@ const ManajemenFeed = () => {
       published_at: post.published_at ? new Date(post.published_at).toISOString().slice(0, 16) : "",
     });
 
-    const { data: existingProducts } = await supabase
+    let existingProducts = [];
+    let source = "join";
+
+    const { data: joined, error: joinError } = await supabase
       .from("feed_post_products")
       .select("product_id, products(id, nama, kode_produk, merek, harga_jual)")
       .eq("post_id", post.id);
+
+    if (joinError) {
+      console.error("[ManajemenFeed] related products join error:", joinError);
+    }
+
+    if (joined && joined.length > 0 && joined[0].products) {
+      existingProducts = joined;
+      console.log("[ManajemenFeed] related products loaded via join:", existingProducts.length);
+    } else {
+      console.warn("[ManajemenFeed] related products join returned empty/null, fallback query...");
+      const { data: fallback, error: fallbackError } = await supabase
+        .from("feed_post_products")
+        .select("product_id")
+        .eq("post_id", post.id);
+
+      if (fallbackError) {
+        console.error("[ManajemenFeed] fallback related products error:", fallbackError);
+      } else if (fallback && fallback.length > 0) {
+        const productIds = fallback.map((r) => r.product_id);
+        const { data: products, error: productsError } = await supabase
+          .from("products")
+          .select("id, nama, kode_produk, merek, harga_jual")
+          .in("id", productIds);
+
+        if (productsError) {
+          console.error("[ManajemenFeed] fallback products fetch error:", productsError);
+        } else {
+          existingProducts = products.map((p) => ({ product_id: p.id, products: p }));
+          source = "fallback";
+          console.log("[ManajemenFeed] related products loaded via fallback:", existingProducts.length);
+        }
+      } else {
+        console.log("[ManajemenFeed] no related products found for post:", post.id);
+      }
+    }
 
     const mapped = (existingProducts || []).map((item) => ({
       id: item.products.id,
@@ -134,6 +172,8 @@ const ManajemenFeed = () => {
       merek: item.products.merek,
       harga_jual: item.products.harga_jual,
     }));
+
+    console.log("[ManajemenFeed] mapped selected products:", mapped.length, "source:", source);
     setSelectedProducts(mapped);
     setIsModalOpen(true);
   };
@@ -232,12 +272,23 @@ const ManajemenFeed = () => {
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const payload = {
+        filename: file.name,
+        mimeType: file.type,
+        base64,
+      };
 
       const res = await fetch("/api/upload-drive", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
       console.log("[ManajemenFeed] upload response status:", res.status);
