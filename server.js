@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
+import { google } from "googleapis";
 
 dotenv.config();
 
@@ -987,6 +989,73 @@ app.post("/api/bjs-express/cancel-assignment", async (req, res) => {
   } catch (err) {
     console.error("BJS Express cancel error:", err);
     res.status(500).json({ message: "Gagal membatalkan penugasan.", details: err.message });
+  }
+});
+
+const DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"];
+
+function getDriveClient() {
+  const serviceAccountJson = process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON;
+  const serviceAccountJsonPath = process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH;
+
+  if (!serviceAccountJson && !serviceAccountJsonPath) {
+    throw new Error("Google Drive service account credentials tidak diatur.");
+  }
+
+  const auth = new google.auth.GoogleAuth({
+    scopes: DRIVE_SCOPES,
+    credentials: serviceAccountJson ? JSON.parse(serviceAccountJson) : undefined,
+    keyFile: serviceAccountJsonPath || undefined,
+  });
+
+  return google.drive({ version: "v3", auth });
+}
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+app.post("/api/upload-drive", upload.single("file"), async (req, res) => {
+  try {
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: "File tidak ditemukan." });
+    }
+
+    const drive = getDriveClient();
+    const fileName = `${Date.now()}_${file.originalname}`;
+
+    const result = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: folderId ? [folderId] : undefined,
+        mimeType: file.mimetype,
+      },
+      media: {
+        mimeType: file.mimetype,
+        body: Buffer.from(file.buffer),
+      },
+      fields: "id, webViewLink, webContentLink",
+    });
+
+    const fileId = result.data.id;
+
+    await drive.permissions.create({
+      fileId,
+      requestBody: {
+        role: "reader",
+        type: "anyone",
+      },
+    });
+
+    res.json({
+      success: true,
+      id: fileId,
+      url: `https://drive.google.com/uc?export=view&id=${fileId}`,
+    });
+  } catch (err) {
+    console.error("Upload ke Google Drive gagal:", err);
+    res.status(500).json({ message: err.message || "Gagal upload ke Google Drive." });
   }
 });
 
