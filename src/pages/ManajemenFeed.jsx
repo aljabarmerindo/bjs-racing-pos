@@ -31,6 +31,10 @@ const ManajemenFeed = () => {
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [productResults, setProductResults] = useState([]);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [selectedProductName, setSelectedProductName] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -157,9 +161,9 @@ const ManajemenFeed = () => {
     const localPreview = URL.createObjectURL(file);
     setPreviewUrl(localPreview);
 
-    const driveFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || "";
+    const driveFolderId = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "";
     if (!driveFolderId) {
-      setUploadError("GOOGLE_DRIVE_FOLDER_ID belum diatur di environment variables.");
+      setUploadError("VITE_GOOGLE_DRIVE_FOLDER_ID belum diatur di environment variables.");
       return;
     }
 
@@ -186,6 +190,32 @@ const ManajemenFeed = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleProductSearch = async (query) => {
+    setProductSearch(query);
+    if (!query.trim()) {
+      setProductResults([]);
+      setShowProductDropdown(false);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("products")
+      .select("id, nama, kode_produk, merek, harga_jual")
+      .or(`nama.ilike.%${query}%,merek.ilike.%${query}%,kode_produk.ilike.%${query}%`)
+      .limit(10);
+
+    setProductResults(data || []);
+    setShowProductDropdown(true);
+  };
+
+  const handleSelectProduct = (product) => {
+    setForm((prev) => ({ ...prev, product_id: product.id }));
+    setSelectedProductName(`${product.nama} (${product.merek || product.kode_produk || product.id})`);
+    setProductSearch("");
+    setProductResults([]);
+    setShowProductDropdown(false);
   };
 
   const handleViewComments = async (post) => {
@@ -388,10 +418,6 @@ const ManajemenFeed = () => {
                   {uploadError && (
                     <p className="text-xs text-red-500">{uploadError}</p>
                   )}
-
-                  {!process.env.GOOGLE_DRIVE_FOLDER_ID && (
-                    <p className="text-xs text-slate-400">Google Drive folder ID belum diatur. Upload manual akan diaktifkan jika env var diisi.</p>
-                  )}
                 </div>
               </div>
               <div>
@@ -425,14 +451,42 @@ const ManajemenFeed = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Produk Terkait (ID)</label>
-                  <input
-                    type="text"
-                    value={form.product_id}
-                    onChange={(e) => setForm({ ...form, product_id: e.target.value })}
-                    placeholder="UUID produk"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Produk Terkait</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={selectedProductName || form.product_id}
+                      onChange={(e) => {
+                        setSelectedProductName("");
+                        handleProductSearch(e.target.value);
+                      }}
+                      onFocus={() => productResults.length > 0 && setShowProductDropdown(true)}
+                      placeholder="Cari nama produk, merek, atau kode produk..."
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    {showProductDropdown && productResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {productResults.map((product) => (
+                          <div
+                            key={product.id}
+                            onClick={() => handleSelectProduct(product)}
+                            className="flex items-center justify-between px-3 py-2 hover:bg-orange-50 cursor-pointer border-b border-slate-100 last:border-0"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-slate-800">{product.nama}</p>
+                              <p className="text-xs text-slate-500">
+                                {product.merek || product.kode_produk || product.id}
+                                {product.harga_jual && ` • ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(product.harga_jual)}`}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {form.product_id && (
+                    <p className="text-xs text-slate-400 mt-1">ID: {form.product_id}</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-6">
