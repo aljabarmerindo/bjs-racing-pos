@@ -69,23 +69,27 @@ Key JSON ini akan digunakan oleh POS app untuk otentikasi ke Google Drive API.
 
 ## Langkah 5: Siapkan Folder di Google Drive
 
+PENTING: Service Account tidak memiliki kuota penyimpanan di "My Drive". Folder upload harus ditempatkan di **Shared Drive**.
+
 1. Buka https://drive.google.com/
-2. Klik **New** → **Folder**
-3. Nama folder: `bjs-feed-images`
-4. Klik **Create**
-5. Buka folder yang baru dibuat
-6. Salin **Folder ID** dari URL:
+2. Di sidebar kiri, klik **Shared drives**
+3. Klik **New** → buat Shared Drive dengan nama `BJS Feed Storage`
+4. Buka Shared Drive tersebut, klik **New** → **Folder**
+5. Nama folder: `bjs-feed-images`
+6. Klik **Create**
+7. Buka folder yang baru dibuat
+8. Salin **Folder ID** dari URL:
    - URL akan terlihat seperti: `https://drive.google.com/drive/folders/1aBcD2EfGhIjKlMnOpQrStUvWxYz123456`
    - Bagian setelah `/folders/` adalah **Folder ID**: `1aBcD2EfGhIjKlMnOpQrStUvWxYz123456`
-7. Set sharing folder:
+9. Set sharing folder:
    - Klik kanan folder → **Share**
    - Ubah menjadi **Anyone with the link → Viewer**
    - Klik **Copy link** untuk testing nanti
-8. Klik **Share** lagi, tambahkan service account email:
-   - Email service account terlihat seperti: `feed-uploader@bjs-racing-feed.iam.gserviceaccount.com`
-   - Paste di kolom invite
-   - Grant permission: **Editor**
-   - Klik **Send**
+10. Klik **Manage members** di Shared Drive, tambahkan service account email:
+    - Email service account terlihat seperti: `feed-uploader@bjs-racing-feed.iam.gserviceaccount.com`
+    - Paste di kolom invite
+    - Grant permission: **Content manager** (atau **Manager** agar bisa upload & set permission)
+    - Klik **Send**
 
 ---
 
@@ -232,8 +236,9 @@ Format ini adalah direct view link, bukan share link yang biasa. Jika ingin paka
 | Masalah | Solusi |
 |---------|--------|
 | Upload gagal, error "credentials tidak diatur" | Cek `.env` atau Vercel env vars, pastikan `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` atau `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH` sudah diisi |
+| Upload gagal, error "Service Accounts do not have storage quota" | Folder harus berada di **Shared Drive**, bukan "My Drive". Buat Shared Drive, pindah folder ke sana, dan tambahkan service account sebagai member |
 | File tidak terlihat oleh publik | Cek permission file di Google Drive, pastikan sudah di-set "Anyone with the link → Viewer" |
-| Folder tidak ditemukan service account | Pastikan folder sudah di-share dengan email service account dan grant Editor |
+| Folder tidak ditemukan service account | Pastikan folder sudah di-share dengan email service account dan grant Editor, atau letakkan di Shared Drive |
 | Error CORS | Upload harus lewat backend API, jangan langsung dari browser ke Google Drive API |
 | Warning "Google Drive folder ID belum diatur" muncul meskipun env var sudah diisi | Di Vercel, pastikan `VITE_GOOGLE_DRIVE_FOLDER_ID` sudah ditambahkan. Di lokal, pastikan `.env` memiliki `VITE_GOOGLE_DRIVE_FOLDER_ID`. Backend menggunakan `GOOGLE_DRIVE_FOLDER_ID`, frontend menggunakan `VITE_GOOGLE_DRIVE_FOLDER_ID` |
 | Error "No more than 12 Serverless Functions" | Vercel Hobby plan limit. Upload-drive di-merge ke `api/couriers.js` untuk hemat slot. Jika nanti butuh lebih banyak endpoint, pertimbangkan upgrade ke Pro plan |
@@ -252,8 +257,10 @@ Format ini adalah direct view link, bukan share link yang biasa. Jika ingin paka
 
 - [ ] GCP project dibuat dan Drive API enabled
 - [ ] Service account dibuat dan JSON key terdownload
-- [ ] Folder `bjs-feed-images` dibuat dan sharing diset "Anyone with link → Viewer"
-- [ ] Folder di-share dengan service account email (Editor)
+- [ ] Shared Drive `BJS Feed Storage` dibuat
+- [ ] Folder `bjs-feed-images` dibuat di dalam Shared Drive
+- [ ] Folder sharing diset "Anyone with link → Viewer"
+- [ ] Service account email ditambahkan ke Shared Drive sebagai Content manager/Manager
 - [ ] Environment variables di POS app sudah diisi (`GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` atau path, `GOOGLE_DRIVE_FOLDER_ID` untuk backend, dan `VITE_GOOGLE_DRIVE_FOLDER_ID` untuk frontend)
 - [ ] `npm install googleapis multer` sudah dijalankan
 - [ ] Testing lokal berhasil (upload sukses, URL terisi otomatis)
