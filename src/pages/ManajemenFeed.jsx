@@ -20,10 +20,12 @@ const CATEGORIES = [
   { value: "bts", label: "Behind the Scene" },
 ];
 
-function normalizeDriveUrl(url) {
-  if (!url || !url.includes('drive.google.com')) return url;
-  const idMatch = url.match(/[-\w]{25,}/);
-  if (idMatch) return `https://drive.google.com/uc?export=view&id=${idMatch[0]}`;
+function normalizeMediaUrl(url) {
+  if (!url) return url;
+  if (url.includes('drive.google.com')) {
+    const idMatch = url.match(/[-\w]{25,}/);
+    if (idMatch) return `https://drive.google.com/uc?export=view&id=${idMatch[0]}`;
+  }
   return url;
 }
 
@@ -191,7 +193,7 @@ const ManajemenFeed = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    const normalizedMediaUrl = normalizeDriveUrl(form.media_url);
+    const normalizedMediaUrl = normalizeMediaUrl(form.media_url);
     const payload = {
       ...form,
       media_url: normalizedMediaUrl,
@@ -215,7 +217,7 @@ const ManajemenFeed = () => {
       console.error("[ManajemenFeed] save error:", result.error);
 
       if (result.error.code === "42P01" || result.error.message?.includes("does not exist")) {
-        alert("Gagal menyimpan: tabel feed_posts belum dibuat. Jalankan migration Supabase terlebih dahulu. Cek docs/google-drive-setup.md atau file supabase/migrations/2026_08_20_create_feed_posts.sql");
+        alert("Gagal menyimpan: tabel feed_posts belum dibuat. Jalankan migration Supabase terlebih dahulu. Cek file supabase/migrations/2026_08_20_create_feed_posts.sql");
       } else {
         alert(`Gagal ${editingPost ? "memperbarui" : "menambah"} post: ${errorMessage}`);
       }
@@ -504,7 +506,7 @@ const ManajemenFeed = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Media URL (Google Drive atau gambar)</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Media URL</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="flex items-center gap-2 px-3 py-2 bg-orange-50 text-orange-700 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors text-sm font-semibold">
@@ -534,8 +536,8 @@ const ManajemenFeed = () => {
                   <input
                     type="text"
                     value={form.media_url}
-                    onChange={(e) => setForm({ ...form, media_url: normalizeDriveUrl(e.target.value) })}
-                    placeholder="https://drive.google.com/uc?export=view&id=..."
+                    onChange={(e) => setForm({ ...form, media_url: normalizeMediaUrl(e.target.value) })}
+                    placeholder="https://ykotzsmncvyfveypeevb.supabase.co/storage/v1/object/public/..."
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
 
