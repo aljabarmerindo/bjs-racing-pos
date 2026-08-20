@@ -3,6 +3,7 @@
 // Menangani /api/couriers (GET, POST), /api/couriers/:id (PUT, DELETE), dan /api/upload-drive (POST).
 import { createClient } from "@supabase/supabase-js";
 import { google } from "googleapis";
+import { Readable } from "stream";
 
 const supabase = createClient(
   process.env.PUBLIC_SUPABASE_URL,
@@ -55,7 +56,7 @@ async function handleUploadDrive(req, res) {
       },
       media: {
         mimeType: mimeType || "application/octet-stream",
-        body: buffer,
+        body: Readable.from(buffer),
       },
       fields: "id, webViewLink, webContentLink",
     });
