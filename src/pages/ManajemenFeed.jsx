@@ -136,6 +136,8 @@ const ManajemenFeed = () => {
       published_at: form.published_at || new Date().toISOString(),
     };
 
+    console.log("[ManajemenFeed] save payload:", payload);
+
     let result;
     if (editingPost) {
       result = await supabase.from("feed_posts").update(payload).eq("id", editingPost.id);
@@ -143,8 +145,12 @@ const ManajemenFeed = () => {
       result = await supabase.from("feed_posts").insert(payload);
     }
 
+    console.log("[ManajemenFeed] save result:", result);
+
     if (result.error) {
-      alert(`Gagal ${editingPost ? "memperbarui" : "menambah"} post: ${result.error.message}`);
+      const message = result.error.message || result.error.details || JSON.stringify(result.error);
+      console.error("[ManajemenFeed] save error:", result.error);
+      alert(`Gagal ${editingPost ? "memperbarui" : "menambah"} post: ${message}`);
     } else {
       setIsModalOpen(false);
       fetchPosts();
@@ -155,6 +161,8 @@ const ManajemenFeed = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log("[ManajemenFeed] file selected:", file.name, file.type, file.size);
+
     setSelectedFile(file);
     setUploadError("");
 
@@ -162,6 +170,7 @@ const ManajemenFeed = () => {
     setPreviewUrl(localPreview);
 
     const driveFolderId = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "";
+    console.log("[ManajemenFeed] driveFolderId:", driveFolderId);
     if (!driveFolderId) {
       setUploadError("VITE_GOOGLE_DRIVE_FOLDER_ID belum diatur di environment variables.");
       return;
@@ -177,7 +186,10 @@ const ManajemenFeed = () => {
         body: formData,
       });
 
+      console.log("[ManajemenFeed] upload response status:", res.status);
       const data = await res.json();
+      console.log("[ManajemenFeed] upload response data:", data);
+
       if (!res.ok) {
         throw new Error(data.message || "Gagal upload");
       }
@@ -185,7 +197,7 @@ const ManajemenFeed = () => {
       setForm((prev) => ({ ...prev, media_url: data.url }));
       setUploadError("");
     } catch (err) {
-      console.error("Upload ke Google Drive gagal:", err);
+      console.error("[ManajemenFeed] upload error:", err);
       setUploadError("Gagal upload ke Google Drive. Silakan paste URL manual.");
     } finally {
       setUploading(false);
@@ -193,6 +205,7 @@ const ManajemenFeed = () => {
   };
 
   const handleProductSearch = async (query) => {
+    console.log("[ManajemenFeed] product search query:", query);
     setProductSearch(query);
     if (!query.trim()) {
       setProductResults([]);
@@ -206,11 +219,13 @@ const ManajemenFeed = () => {
       .or(`nama.ilike.%${query}%,merek.ilike.%${query}%,kode_produk.ilike.%${query}%`)
       .limit(10);
 
+    console.log("[ManajemenFeed] product search results:", data);
     setProductResults(data || []);
     setShowProductDropdown(true);
   };
 
   const handleSelectProduct = (product) => {
+    console.log("[ManajemenFeed] product selected:", product);
     setForm((prev) => ({ ...prev, product_id: product.id }));
     setSelectedProductName(`${product.nama} (${product.merek || product.kode_produk || product.id})`);
     setProductSearch("");
@@ -455,7 +470,7 @@ const ManajemenFeed = () => {
                   <div className="relative">
                     <input
                       type="text"
-                      value={selectedProductName || form.product_id}
+                      value={showProductDropdown ? productSearch : (selectedProductName || form.product_id)}
                       onChange={(e) => {
                         setSelectedProductName("");
                         handleProductSearch(e.target.value);
