@@ -19,6 +19,13 @@ const CATEGORIES = [
   { value: "bts", label: "Behind the Scene" },
 ];
 
+function normalizeDriveUrl(url) {
+  if (!url || !url.includes('drive.google.com')) return url;
+  const idMatch = url.match(/[-\w]{25,}/);
+  if (idMatch) return `https://drive.google.com/uc?export=view&id=${idMatch[0]}`;
+  return url;
+}
+
 const ManajemenFeed = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,13 +50,14 @@ const ManajemenFeed = () => {
     media_url: "",
     thumbnail_url: "",
     youtube_url: "",
-    product_id: "",
     category: "",
     tags: "",
     is_published: true,
     is_featured: false,
     published_at: "",
   });
+
+  const [selectedProducts, setSelectedProducts] = useState([]);
 
   const fetchPosts = async () => {
     const { data, error } = await supabase
@@ -88,17 +96,17 @@ const ManajemenFeed = () => {
       media_url: "",
       thumbnail_url: "",
       youtube_url: "",
-      product_id: "",
       category: "",
       tags: "",
       is_published: true,
       is_featured: false,
       published_at: new Date().toISOString().slice(0, 16),
     });
+    setSelectedProducts([]);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (post) => {
+  const handleEdit = async (post) => {
     setEditingPost(post);
     setForm({
       title: post.title || "",
@@ -107,13 +115,26 @@ const ManajemenFeed = () => {
       media_url: post.media_url || "",
       thumbnail_url: post.thumbnail_url || "",
       youtube_url: post.youtube_url || "",
-      product_id: post.product_id || "",
       category: post.category || "",
       tags: Array.isArray(post.tags) ? post.tags.join(", ") : "",
       is_published: post.is_published ?? true,
       is_featured: post.is_featured ?? false,
       published_at: post.published_at ? new Date(post.published_at).toISOString().slice(0, 16) : "",
     });
+
+    const { data: existingProducts } = await supabase
+      .from("feed_post_products")
+      .select("product_id, products(id, nama, kode_produk, merek, harga_jual)")
+      .eq("post_id", post.id);
+
+    const mapped = (existingProducts || []).map((item) => ({
+      id: item.products.id,
+      nama: item.products.nama,
+      kode_produk: item.products.kode_produk,
+      merek: item.products.merek,
+      harga_jual: item.products.harga_jual,
+    }));
+    setSelectedProducts(mapped);
     setIsModalOpen(true);
   };
 
@@ -129,10 +150,11 @@ const ManajemenFeed = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const normalizedMediaUrl = normalizeDriveUrl(form.media_url);
     const payload = {
       ...form,
+      media_url: normalizedMediaUrl,
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-      product_id: form.product_id || null,
       published_at: form.published_at || new Date().toISOString(),
     };
 
@@ -142,7 +164,7 @@ const ManajemenFeed = () => {
     if (editingPost) {
       result = await supabase.from("feed_posts").update(payload).eq("id", editingPost.id);
     } else {
-      result = await supabase.from("feed_posts").insert(payload);
+      result = await supabase.from("feed_posts").insert(payload).select("id").single();
     }
 
     console.log("[ManajemenFeed] save result:", result);
@@ -156,10 +178,37 @@ const ManajemenFeed = () => {
       } else {
         alert(`Gagal ${editingPost ? "memperbarui" : "menambah"} post: ${errorMessage}`);
       }
-    } else {
-      setIsModalOpen(false);
-      fetchPosts();
+      return;
     }
+
+    const postId = editingPost ? editingPost.id : result.data.id;
+
+    if (selectedProducts.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("feed_post_products")
+        .delete()
+        .eq("post_id", postId);
+
+      if (deleteError) {
+        console.error("[ManajemenFeed] delete old products error:", deleteError);
+      }
+
+      const { error: insertError } = await supabase.from("feed_post_products").insert(
+        selectedProducts.map((product) => ({
+          post_id: postId,
+          product_id: product.id,
+        }))
+      );
+
+      if (insertError) {
+        console.error("[ManajemenFeed] insert products error:", insertError);
+        alert("Post tersimpan, tapi gagal menyimpan produk terkait: " + insertError.message);
+        return;
+      }
+    }
+
+    setIsModalOpen(false);
+    fetchPosts();
   };
 
   const handleFileChange = async (e) => {
@@ -243,11 +292,18 @@ const ManajemenFeed = () => {
 
   const handleSelectProduct = (product) => {
     console.log("[ManajemenFeed] product selected:", product);
-    setForm((prev) => ({ ...prev, product_id: product.id }));
-    setSelectedProductName(`${product.nama} (${product.merek || product.kode_produk || product.id})`);
+    setSelectedProducts((prev) => {
+      const exists = prev.find((p) => p.id === product.id);
+      if (exists) return prev;
+      return [...prev, { id: product.id, nama: product.nama, kode_produk: product.kode_produk, merek: product.merek, harga_jual: product.harga_jual }];
+    });
     setProductSearch("");
     setProductResults([]);
     setShowProductDropdown(false);
+  };
+
+  const handleRemoveProduct = (productId) => {
+    setSelectedProducts((prev) => prev.filter((p) => p.id !== productId));
   };
 
   const handleViewComments = async (post) => {
@@ -442,7 +498,7 @@ const ManajemenFeed = () => {
                   <input
                     type="text"
                     value={form.media_url}
-                    onChange={(e) => setForm({ ...form, media_url: e.target.value })}
+                    onChange={(e) => setForm({ ...form, media_url: normalizeDriveUrl(e.target.value) })}
                     placeholder="https://drive.google.com/uc?export=view&id=..."
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
@@ -484,26 +540,44 @@ const ManajemenFeed = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">Produk Terkait</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={showProductDropdown ? productSearch : (selectedProductName || form.product_id)}
-                      onChange={(e) => {
-                        setSelectedProductName("");
-                        handleProductSearch(e.target.value);
-                      }}
-                      onFocus={() => productResults.length > 0 && setShowProductDropdown(true)}
-                      placeholder="Cari nama produk, merek, atau kode produk..."
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                    {showProductDropdown && productResults.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {productResults.map((product) => (
-                          <div
-                            key={product.id}
-                            onClick={() => handleSelectProduct(product)}
-                            className="flex items-center justify-between px-3 py-2 hover:bg-orange-50 cursor-pointer border-b border-slate-100 last:border-0"
-                          >
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={showProductDropdown ? productSearch : ""}
+                        onChange={(e) => {
+                          setSelectedProductName("");
+                          handleProductSearch(e.target.value);
+                        }}
+                        onFocus={() => productResults.length > 0 && setShowProductDropdown(true)}
+                        placeholder="Cari nama produk, merek, atau kode produk..."
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      {showProductDropdown && productResults.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {productResults.map((product) => (
+                            <div
+                              key={product.id}
+                              onClick={() => handleSelectProduct(product)}
+                              className="flex items-center justify-between px-3 py-2 hover:bg-orange-50 cursor-pointer border-b border-slate-100 last:border-0"
+                            >
+                              <div>
+                                <p className="text-sm font-medium text-slate-800">{product.nama}</p>
+                                <p className="text-xs text-slate-500">
+                                  {product.merek || product.kode_produk || product.id}
+                                  {product.harga_jual && ` • ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(product.harga_jual)}`}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedProducts.length > 0 && (
+                      <div className="space-y-1">
+                        {selectedProducts.map((product) => (
+                          <div key={product.id} className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-lg px-3 py-2">
                             <div>
                               <p className="text-sm font-medium text-slate-800">{product.nama}</p>
                               <p className="text-xs text-slate-500">
@@ -511,14 +585,19 @@ const ManajemenFeed = () => {
                                 {product.harga_jual && ` • ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(product.harga_jual)}`}
                               </p>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveProduct(product.id)}
+                              className="text-red-600 hover:bg-red-100 rounded p-1 transition-colors"
+                              title="Hapus"
+                            >
+                              <FiX className="w-4 h-4" />
+                            </button>
+                           </div>
+                         ))}
+                       </div>
+                     )}
                   </div>
-                  {form.product_id && (
-                    <p className="text-xs text-slate-400 mt-1">ID: {form.product_id}</p>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-6">
