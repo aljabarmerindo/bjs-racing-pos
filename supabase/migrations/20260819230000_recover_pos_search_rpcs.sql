@@ -46,7 +46,7 @@ BEGIN
       OR (price_range = '200000-500000' AND p.harga_jual > 200000 AND p.harga_jual <= 500000)
       OR (price_range = '500000+' AND p.harga_jual > 500000)
     )
-  ORDER BY p.nama;
+  ORDER BY p.updated_at DESC;
 END;
 $$;
 
@@ -77,7 +77,7 @@ BEGIN
     AND (merek_filter IS NULL OR merek_filter = 'semua' OR p.merek = merek_filter)
     AND (kategori_filter IS NULL OR kategori_filter = 'semua' OR p.kategori = kategori_filter)
     AND (supplier_filter IS NULL OR supplier_filter = 'semua' OR p.supplier = supplier_filter)
-  ORDER BY p.nama;
+  ORDER BY p.updated_at DESC;
 END;
 $$;
 
