@@ -49,7 +49,6 @@ async function handleGet(req, res) {
         created_at,
         total_amount,
         shipping_cost,
-        notes,
         courier_details,
         shipping_address,
         customer_id,

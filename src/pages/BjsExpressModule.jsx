@@ -527,14 +527,7 @@ function PenugasanTab() {
                   return (
                     <Fragment key={order.id}>
                       <tr className="hover:bg-slate-50 align-top">
-                        <td className="px-6 py-4 font-medium">
-                          {order.order_number}
-                          {order.notes ? (
-                            <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium" title={order.notes}>
-                              Catatan
-                            </span>
-                          ) : null}
-                        </td>
+                        <td className="px-6 py-4 font-medium">{order.order_number}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{formatTanggal(order.created_at)}</td>
                         <td className="px-6 py-4">
                           <div className="font-medium">{order.customers?.nama_pelanggan || "-"}</div>
