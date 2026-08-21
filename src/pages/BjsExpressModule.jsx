@@ -502,6 +502,8 @@ function PenugasanTab() {
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Tanggal</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Pelanggan</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Alamat</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Layanan</th>
+                  <th className="px-6 py-3 text-left font-medium text-slate-500">Item</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Total</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Kurir</th>
                   <th className="px-6 py-3 text-left font-medium text-slate-500">Status</th>
@@ -515,13 +517,24 @@ function PenugasanTab() {
                   const isCompleted = order.status === "completed";
                   const isCancelled = assignment?.status === "cancelled";
                   const assignmentStatus = assignment?.status || (isCompleted ? "completed" : null);
+                  const items = Array.isArray(order.order_items) ? order.order_items : [];
+                  const itemCount = items.reduce((sum, it) => sum + Number(it?.quantity || 0), 0);
+                  const firstItem = items[0];
+                  const serviceName = order.courier_details?.service || order.courier_details?.name || "BJS Express";
                   const events = (assignment?.courier_assignment_events || [])
                     .slice()
                     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
                   return (
                     <Fragment key={order.id}>
                       <tr className="hover:bg-slate-50 align-top">
-                        <td className="px-6 py-4 font-medium">{order.order_number}</td>
+                        <td className="px-6 py-4 font-medium">
+                          {order.order_number}
+                          {order.notes ? (
+                            <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium" title={order.notes}>
+                              Catatan
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">{formatTanggal(order.created_at)}</td>
                         <td className="px-6 py-4">
                           <div className="font-medium">{order.customers?.nama_pelanggan || "-"}</div>
@@ -532,6 +545,23 @@ function PenugasanTab() {
                             {order.shipping_address?.full_address ||
                               order.shipping_address?.address ||
                               JSON.stringify(order.shipping_address || {}).slice(0, 120)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-xs font-medium text-slate-700">{serviceName}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs text-slate-600">
+                            {itemCount > 0 ? (
+                              <>
+                                <span className="font-semibold">{itemCount} item</span>
+                                {firstItem?.products?.nama ? (
+                                  <div className="text-slate-500 truncate max-w-[200px]">{firstItem.products.nama}</div>
+                                ) : null}
+                              </>
+                            ) : (
+                              "-"
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{formatRupiah(order.total_amount)}</td>
@@ -644,7 +674,7 @@ function PenugasanTab() {
                       </tr>
                       {historyFor === order.id && (
                         <tr className="bg-slate-50/60">
-                          <td colSpan={8} className="px-6 py-4">
+                          <td colSpan={10} className="px-6 py-4">
                             <div className="max-w-lg">
                               <p className="font-bold mb-3">Riwayat Penugasan</p>
                               {events.length === 0 ? (

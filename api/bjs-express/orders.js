@@ -49,10 +49,12 @@ async function handleGet(req, res) {
         created_at,
         total_amount,
         shipping_cost,
+        notes,
         courier_details,
         shipping_address,
         customer_id,
         customers (id, nama_pelanggan, telepon),
+        order_items (id, quantity, price, products (id, nama, kode, image_url)),
         courier_assignments (id, status, notes, photo_url, completed_at, couriers (id, name, phone), courier_assignment_events (id, status, note, created_at))
       `)
       .eq("courier_details->>code", "internal")
