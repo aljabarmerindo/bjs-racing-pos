@@ -3,7 +3,7 @@
 -- Note: These functions were originally created manually in Supabase SQL Editor.
 -- This migration backs them up so they can be reapplied if dropped.
 
--- 1) search_products - used by POS Produk.jsx, Pos.jsx, NotaOcrModal.jsx
+-- 1) search_products - used by POS Produk.jsx, Pos.jsx, NotaOcrModal.jsx, ManajemenFeed.jsx
 CREATE OR REPLACE FUNCTION public.search_products(
   search_term text DEFAULT NULL,
   merek_filter text DEFAULT NULL,
@@ -23,7 +23,15 @@ BEGIN
   SELECT p.*
   FROM public.products p
   WHERE (status_filter = 'semua' OR p.status = status_filter)
-    AND (search_term IS NULL OR search_term = '' OR p.search_terms ILIKE '%' || search_term || '%')
+    AND (
+      search_term IS NULL
+      OR search_term = ''
+      OR p.search_terms ILIKE '%' || search_term || '%'
+      OR p.kode ILIKE '%' || search_term || '%'
+      OR p.sku ILIKE '%' || search_term || '%'
+      OR p.merek ILIKE '%' || search_term || '%'
+      OR p.kategori ILIKE '%' || search_term || '%'
+    )
     AND (merek_filter IS NULL OR merek_filter = 'semua' OR p.merek = merek_filter)
     AND (kategori_filter IS NULL OR kategori_filter = 'semua' OR p.kategori = kategori_filter)
     AND (low_stock_only = false OR p.stok <= p.stok_min)
@@ -57,7 +65,15 @@ BEGIN
   SELECT p.*
   FROM public.products p
   WHERE p.status = 'Aktif'
-    AND (search_term IS NULL OR search_term = '' OR p.search_terms ILIKE '%' || search_term || '%')
+    AND (
+      search_term IS NULL
+      OR search_term = ''
+      OR p.search_terms ILIKE '%' || search_term || '%'
+      OR p.kode ILIKE '%' || search_term || '%'
+      OR p.sku ILIKE '%' || search_term || '%'
+      OR p.merek ILIKE '%' || search_term || '%'
+      OR p.kategori ILIKE '%' || search_term || '%'
+    )
     AND (merek_filter IS NULL OR merek_filter = 'semua' OR p.merek = merek_filter)
     AND (kategori_filter IS NULL OR kategori_filter = 'semua' OR p.kategori = kategori_filter)
     AND (supplier_filter IS NULL OR supplier_filter = 'semua' OR p.supplier = supplier_filter)
