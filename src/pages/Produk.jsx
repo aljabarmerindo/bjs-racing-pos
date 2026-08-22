@@ -262,7 +262,7 @@ function Produk() {
     setIsModalOpen(true);
   };
 
-  const handleSaveProduct = async (productData, selectedVehicleModels = []) => {
+  const handleSaveProduct = async (productData, selectedVehicleModels = [], vehicleData = {}) => {
     setIsSaving(true);
     setSaveError("");
     try {
@@ -313,7 +313,7 @@ function Produk() {
           product_id: savedProductId,
           vehicle_model_id: modelId,
           vehicle_brand_id: brandData?.id || null,
-          vehicle_kategori_id: dataToSave.vehicle_kategori_id || null,
+          vehicle_kategori_id: vehicleData.vehicle_kategori_id || null,
           is_primary: false,
         }));
 

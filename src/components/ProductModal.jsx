@@ -170,7 +170,7 @@ function ProductModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { selectedVehicleModels, ...finalProduct } = {
+    const { selectedVehicleModels, vehicle_kategori_id, vehicle_brand_id, vehicle_model_id, vehicle_code_id, ...finalProduct } = {
       ...product,
       harga_beli: Number(product.harga_beli) || 0,
       harga_jual: Number(product.harga_jual) || 0,
@@ -189,13 +189,14 @@ function ProductModal({
       image_url_2: product.image_url_2 || null,
       image_url_3: product.image_url_3 || null,
       color_swatch_url: product.color_swatch_url || null,
-      vehicle_kategori_id: hasVehicleCompatibility && product.vehicle_kategori_id ? Number(product.vehicle_kategori_id) : null,
-      vehicle_brand_id: hasVehicleCompatibility && product.vehicle_brand_id ? Number(product.vehicle_brand_id) : null,
-      vehicle_model_id: hasVehicleCompatibility && product.vehicle_model_id ? Number(product.vehicle_model_id) : null,
-      vehicle_code_id: hasVehicleCompatibility && product.vehicle_code_id ? Number(product.vehicle_code_id) : null,
     };
 
-    await onSave(finalProduct, hasVehicleCompatibility ? (selectedVehicleModels || []) : []);
+    await onSave(finalProduct, hasVehicleCompatibility ? (selectedVehicleModels || []) : [], hasVehicleCompatibility ? {
+      vehicle_kategori_id: product.vehicle_kategori_id || null,
+      vehicle_brand_id: product.vehicle_brand_id || null,
+      vehicle_model_id: product.vehicle_model_id || null,
+      vehicle_code_id: product.vehicle_code_id || null,
+    } : {});
   };
 
   const applyDiscountPreset = (pct) => {
