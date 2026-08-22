@@ -44,10 +44,12 @@ function ProductModal({
     vehicle_model_id: "",
     vehicle_code_id: "",
     selectedVehicleModels: [],
+    hasVehicleCompatibility: false,
   };
 
   const [product, setProduct] = useState(initialProductState);
   const [originalHargaBeli, setOriginalHargaBeli] = useState(null);
+  const [hasVehicleCompatibility, setHasVehicleCompatibility] = useState(false);
   const [vehicleKategoris, setVehicleKategoris] = useState([]);
   const [vehicleBrands, setVehicleBrands] = useState([]);
   const [vehicleModels, setVehicleModels] = useState([]);
@@ -127,11 +129,16 @@ function ProductModal({
         .select("vehicle_model_id")
         .eq("product_id", productToEdit.id)
         .then(({ data }) => {
-          if (data) {
+          if (data && data.length > 0) {
             const modelIds = data.map((c) => c.vehicle_model_id);
             setProduct((prev) => ({ ...prev, selectedVehicleModels: modelIds }));
+            setHasVehicleCompatibility(true);
+          } else {
+            setHasVehicleCompatibility(false);
           }
         });
+    } else {
+      setHasVehicleCompatibility(false);
     }
   }, [productToEdit]);
 
@@ -182,13 +189,13 @@ function ProductModal({
       image_url_2: product.image_url_2 || null,
       image_url_3: product.image_url_3 || null,
       color_swatch_url: product.color_swatch_url || null,
-      vehicle_kategori_id: product.vehicle_kategori_id ? Number(product.vehicle_kategori_id) : null,
-      vehicle_brand_id: product.vehicle_brand_id ? Number(product.vehicle_brand_id) : null,
-      vehicle_model_id: product.vehicle_model_id ? Number(product.vehicle_model_id) : null,
-      vehicle_code_id: product.vehicle_code_id ? Number(product.vehicle_code_id) : null,
+      vehicle_kategori_id: hasVehicleCompatibility && product.vehicle_kategori_id ? Number(product.vehicle_kategori_id) : null,
+      vehicle_brand_id: hasVehicleCompatibility && product.vehicle_brand_id ? Number(product.vehicle_brand_id) : null,
+      vehicle_model_id: hasVehicleCompatibility && product.vehicle_model_id ? Number(product.vehicle_model_id) : null,
+      vehicle_code_id: hasVehicleCompatibility && product.vehicle_code_id ? Number(product.vehicle_code_id) : null,
     };
 
-    await onSave(finalProduct, product.selectedVehicleModels || []);
+    await onSave(finalProduct, hasVehicleCompatibility ? (product.selectedVehicleModels || []) : []);
   };
 
   const applyDiscountPreset = (pct) => {
@@ -703,8 +710,35 @@ function ProductModal({
               {/* Vehicle Compatibility - only for non-Pilok */}
               {product.kategori !== 'Pilok' && (
                 <div className="md:col-span-2 mt-4">
-                  <h3 className="text-lg font-semibold mb-2 text-slate-800">Spesifikasi Motor</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <input
+                      type="checkbox"
+                      id="hasVehicleCompatibility"
+                      checked={hasVehicleCompatibility}
+                      onChange={(e) => {
+                        setHasVehicleCompatibility(e.target.checked);
+                        if (!e.target.checked) {
+                          setProduct((prev) => ({
+                            ...prev,
+                            selectedVehicleModels: [],
+                            vehicle_kategori_id: "",
+                            vehicle_brand_id: "",
+                            vehicle_model_id: "",
+                            vehicle_code_id: "",
+                          }));
+                          setVehicleModels([]);
+                          setVehicleCodes([]);
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <label htmlFor="hasVehicleCompatibility" className="text-sm font-medium text-slate-700 cursor-pointer">
+                      Kompatibel dengan kendaraan (opsional)
+                    </label>
+                  </div>
+                  
+                  {hasVehicleCompatibility && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="vehicle_kategori_id" className="block mb-1 text-sm font-medium text-slate-700">Kategori Motor</label>
                       <select id="vehicle_kategori_id" value={product.vehicle_kategori_id || ""} onChange={handleChange} className="w-full p-2 border rounded bg-white">
