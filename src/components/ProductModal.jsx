@@ -227,32 +227,75 @@ function ProductModal({
   const convertToWebP = (file) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      console.log("[WebP] Converting file:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        objectUrl,
+      });
+
       img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" }));
-            } else {
-              reject(new Error("Gagal konversi WebP"));
-            }
-          },
-          "image/webp",
-          0.85
-        );
+        console.log("[WebP] Image loaded:", {
+          width: img.width,
+          height: img.height,
+        });
+        URL.revokeObjectURL(objectUrl);
+
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
+                console.log("[WebP] Conversion success:", {
+                  webpType: webpFile.type,
+                  webpSize: webpFile.size,
+                });
+                resolve(webpFile);
+              } else {
+                reject(new Error("Gagal konversi WebP: canvas.toBlob returned null"));
+              }
+            },
+            "image/webp",
+            0.85
+          );
+        } catch (err) {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Gagal konversi WebP: " + err.message));
+        }
       };
-      img.onerror = () => reject(new Error("Gagal memuat gambar"));
-      img.src = URL.createObjectURL(file);
+
+      img.onerror = (e) => {
+        URL.revokeObjectURL(objectUrl);
+        console.error("[WebP] Image load error:", {
+          type: file.type,
+          size: file.size,
+          error: e,
+        });
+        reject(new Error("Gagal memuat gambar. Pastikan file adalah gambar yang valid (JPG/PNG/WebP)."));
+      };
+
+      img.src = objectUrl;
     });
   };
 
   const handleImageUpload = async (e, slot) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    console.log("[Upload] Starting upload:", {
+      slot,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
 
     const isPilok = product.kategori === "Pilok";
     if (!isPilok && (!product.kategori || !product.merek)) {
@@ -262,10 +305,16 @@ function ProductModal({
 
     setUploading(true);
     try {
+      console.log("[Upload] Compressing image...");
       const compressedFile = await imageCompression(file, {
         maxSizeMB: 1,
         maxWidthOrHeight: 1920,
         useWebWorker: true,
+      });
+
+      console.log("[Upload] Compression done:", {
+        type: compressedFile.type,
+        size: compressedFile.size,
       });
 
       const webpFile = await convertToWebP(compressedFile);
@@ -282,19 +331,31 @@ function ProductModal({
         filePath = `${kategoriSlug}/${merekSlug}/${productId}-${slot}.webp`;
       }
 
+      console.log("[Upload] Uploading to bucket:", {
+        bucket,
+        filePath,
+        webpType: webpFile.type,
+        webpSize: webpFile.size,
+      });
+
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, webpFile, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("[Upload] Upload error:", uploadError);
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(filePath);
 
+      console.log("[Upload] Success:", publicUrl);
+
       setProduct((prev) => ({ ...prev, [slot]: publicUrl }));
     } catch (error) {
-      console.error("Error upload gambar:", error);
+      console.error("[Upload] Full error:", error);
       alert(`Gagal upload gambar: ${error.message}`);
     } finally {
       setUploading(false);
