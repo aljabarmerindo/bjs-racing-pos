@@ -42,6 +42,7 @@ import GojekAreas from "./pages/GojekAreas.jsx";
 import BjsExpressModule from "./pages/BjsExpressModule.jsx";
 import ManajemenFeed from "./pages/ManajemenFeed.jsx";
 import VideoListPage from "./pages/VideoListPage.jsx";
+import ManajemenKendaraan from "./pages/ManajemenKendaraan.jsx";
 
 
 
@@ -184,6 +185,7 @@ function App() {
             <Route path="manajemen-merek" element={<ManajemenMerek />} />
             <Route path="manajemen-video" element={<VideoListPage />} />
             <Route path="manajemen-feed" element={<ManajemenFeed />} />
+            <Route path="manajemen-kendaraan" element={<ManajemenKendaraan />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
         </>

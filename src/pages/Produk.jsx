@@ -262,7 +262,7 @@ function Produk() {
     setIsModalOpen(true);
   };
 
-  const handleSaveProduct = async (productData) => {
+  const handleSaveProduct = async (productData, selectedVehicleModels = []) => {
     setIsSaving(true);
     setSaveError("");
     try {
@@ -277,17 +277,53 @@ function Produk() {
       };
 
       let error;
+      let savedProductId = id;
       if (id) {
         ({ error } = await supabase
           .from("products")
           .update(finalDbData)
           .eq("id", id));
       } else {
-        ({ error } = await supabase.from("products").insert(finalDbData));
+        const { data: inserted, error: insertError } = await supabase
+          .from("products")
+          .insert(finalDbData)
+          .select("id")
+          .single();
+        if (insertError) throw insertError;
+        savedProductId = inserted?.id;
+        ({ error } = await supabase
+          .from("products")
+          .update({ id: savedProductId })
+          .eq("id", savedProductId));
       }
 
       if (error) {
         throw error;
+      }
+
+      // Save vehicle compatibility pivot
+      if (savedProductId && selectedVehicleModels.length > 0) {
+        const { data: brandData } = await supabase
+          .from("vehicle_brands")
+          .select("id")
+          .eq("name", dataToSave.merek)
+          .single();
+
+        const compatibilities = selectedVehicleModels.map((modelId) => ({
+          product_id: savedProductId,
+          vehicle_model_id: modelId,
+          vehicle_brand_id: brandData?.id || null,
+          vehicle_kategori_id: dataToSave.vehicle_kategori_id || null,
+          is_primary: false,
+        }));
+
+        const { error: compatError } = await supabase
+          .from("product_vehicle_compatibilities")
+          .upsert(compatibilities, { onConflict: "product_id,vehicle_model_id" });
+
+        if (compatError) {
+          console.error("Failed to save compatibilities:", compatError);
+        }
       }
 
       alert(

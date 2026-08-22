@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import imageCompression from "browser-image-compression";
+import { supabase } from "../supabaseClient";
 import DynamicPricingBadge from "./DynamicPricingBadge.jsx";
 
 function ProductModal({
@@ -33,10 +35,24 @@ function ProductModal({
     panjang_cm: "",
     lebar_cm: "",
     tinggi_cm: "",
+    image_url: "",
+    image_url_2: "",
+    image_url_3: "",
+    color_swatch_url: "",
+    vehicle_kategori_id: "",
+    vehicle_brand_id: "",
+    vehicle_model_id: "",
+    vehicle_code_id: "",
+    selectedVehicleModels: [],
   };
 
   const [product, setProduct] = useState(initialProductState);
   const [originalHargaBeli, setOriginalHargaBeli] = useState(null);
+  const [vehicleKategoris, setVehicleKategoris] = useState([]);
+  const [vehicleBrands, setVehicleBrands] = useState([]);
+  const [vehicleModels, setVehicleModels] = useState([]);
+  const [vehicleCodes, setVehicleCodes] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -68,13 +84,56 @@ function ProductModal({
           panjang_cm: productToEdit.panjang_cm ? String(productToEdit.panjang_cm) : "",
           lebar_cm: productToEdit.lebar_cm ? String(productToEdit.lebar_cm) : "",
           tinggi_cm: productToEdit.tinggi_cm ? String(productToEdit.tinggi_cm) : "",
+          image_url: productToEdit.image_url || "",
+          image_url_2: productToEdit.image_url_2 || "",
+          image_url_3: productToEdit.image_url_3 || "",
+          color_swatch_url: productToEdit.color_swatch_url || "",
+          vehicle_kategori_id: productToEdit.vehicle_kategori_id || "",
+          vehicle_brand_id: productToEdit.vehicle_brand_id || "",
+          vehicle_model_id: productToEdit.vehicle_model_id || "",
+          vehicle_code_id: productToEdit.vehicle_code_id || "",
+          selectedVehicleModels: [],
         });
       } else {
         setProduct(initialProductState);
         setOriginalHargaBeli(null);
       }
+      fetchVehicleKategoris();
+      fetchVehicleBrands();
     }
   }, [productToEdit, isOpen]);
+
+  useEffect(() => {
+    if (product.vehicle_brand_id) {
+      fetchVehicleModels(product.vehicle_brand_id);
+    } else {
+      setVehicleModels([]);
+      setVehicleCodes([]);
+    }
+  }, [product.vehicle_brand_id]);
+
+  useEffect(() => {
+    if (product.vehicle_brand_id && product.vehicle_model_id) {
+      fetchVehicleCodes(product.vehicle_brand_id, product.vehicle_model_id);
+    } else {
+      setVehicleCodes([]);
+    }
+  }, [product.vehicle_brand_id, product.vehicle_model_id]);
+
+  useEffect(() => {
+    if (productToEdit && productToEdit.id) {
+      supabase
+        .from("product_vehicle_compatibilities")
+        .select("vehicle_model_id")
+        .eq("product_id", productToEdit.id)
+        .then(({ data }) => {
+          if (data) {
+            const modelIds = data.map((c) => c.vehicle_model_id);
+            setProduct((prev) => ({ ...prev, selectedVehicleModels: modelIds }));
+          }
+        });
+    }
+  }, [productToEdit]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -102,7 +161,7 @@ function ProductModal({
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const finalProduct = {
       ...product,
@@ -119,8 +178,17 @@ function ProductModal({
       panjang_cm: Number(product.panjang_cm) || 10,
       lebar_cm: Number(product.lebar_cm) || 10,
       tinggi_cm: Number(product.tinggi_cm) || 10,
+      image_url: product.image_url || null,
+      image_url_2: product.image_url_2 || null,
+      image_url_3: product.image_url_3 || null,
+      color_swatch_url: product.color_swatch_url || null,
+      vehicle_kategori_id: product.vehicle_kategori_id ? Number(product.vehicle_kategori_id) : null,
+      vehicle_brand_id: product.vehicle_brand_id ? Number(product.vehicle_brand_id) : null,
+      vehicle_model_id: product.vehicle_model_id ? Number(product.vehicle_model_id) : null,
+      vehicle_code_id: product.vehicle_code_id ? Number(product.vehicle_code_id) : null,
     };
-    onSave(finalProduct);
+
+    await onSave(finalProduct, product.selectedVehicleModels || []);
   };
 
   const applyDiscountPreset = (pct) => {
@@ -146,6 +214,113 @@ function ProductModal({
   const handleClose = () => {
     if (saveError) setSaveError("");
     onClose();
+  };
+
+  const convertToWebP = (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" }));
+            } else {
+              reject(new Error("Gagal konversi WebP"));
+            }
+          },
+          "image/webp",
+          0.85
+        );
+      };
+      img.onerror = () => reject(new Error("Gagal memuat gambar"));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleImageUpload = async (e, slot) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
+
+      const webpFile = await convertToWebP(compressedFile);
+
+      const productId = productToEdit?.id || Date.now();
+      const filePath = `produk-pilok/public/${productId}-${slot}.webp`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("produk-pilok")
+        .upload(filePath, webpFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("produk-pilok")
+        .getPublicUrl(filePath);
+
+      setProduct((prev) => ({ ...prev, [slot]: publicUrl }));
+    } catch (error) {
+      console.error("Error upload gambar:", error);
+      alert(`Gagal upload gambar: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = (slot) => {
+    setProduct((prev) => ({ ...prev, [slot]: "" }));
+  };
+
+  const fetchVehicleKategoris = async () => {
+    const { data } = await supabase.from("vehicle_kategori").select("*").order("name");
+    setVehicleKategoris(data || []);
+  };
+
+  const fetchVehicleBrands = async () => {
+    const { data } = await supabase.from("vehicle_brands").select("*").order("name");
+    setVehicleBrands(data || []);
+  };
+
+  const fetchVehicleModels = async (brandId) => {
+    if (!brandId) {
+      setVehicleModels([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("vehicle_models")
+      .select("*")
+      .eq("brand_id", Number(brandId))
+      .order("name");
+    setVehicleModels(data || []);
+  };
+
+  const fetchVehicleCodes = async (brandId, modelId) => {
+    let query = supabase.from("vehicle_codes").select("*").eq("is_active", true);
+    if (brandId) query = query.eq("vehicle_brand_id", Number(brandId));
+    if (modelId) query = query.eq("vehicle_model_id", Number(modelId));
+    const { data } = await query.order("code");
+    setVehicleCodes(data || []);
+  };
+
+  const toggleVehicleModel = (modelId) => {
+    setProduct((prev) => {
+      const current = prev.selectedVehicleModels || [];
+      const updated = current.includes(modelId)
+        ? current.filter((id) => id !== modelId)
+        : [...current, modelId];
+      return { ...prev, selectedVehicleModels: updated };
+    });
   };
 
   if (!isOpen) return null;
@@ -258,6 +433,74 @@ function ProductModal({
               />
             </div>
           </div>
+
+          {/* Image URL Display & Upload */}
+          <div className="mt-6 pt-4 border-t">
+            <h3 className="text-lg font-semibold mb-2 text-slate-800">Gambar Produk</h3>
+            <p className="text-sm text-slate-500 mb-4">Format: JPG/PNG/WebP. Maks 1MB. Otomatis konversi ke WebP.</p>
+            
+            {["image_url", "image_url_2", "image_url_3", "color_swatch_url"].map((slot) => {
+              const labels = {
+                image_url: "Gambar Utama",
+                image_url_2: "Gambar 2",
+                image_url_3: "Gambar 3",
+                color_swatch_url: "Color Swatch"
+              };
+              const currentUrl = product[slot] || "";
+              return (
+                <div key={slot} className="mb-3">
+                  <label className="block mb-1 text-sm font-medium text-slate-700">{labels[slot]}</label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value={currentUrl}
+                      placeholder="Belum ada gambar"
+                      className="flex-1 p-2 border rounded bg-slate-50 text-sm"
+                    />
+                    {currentUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentUrl);
+                          alert("URL gambar disalin!");
+                        }}
+                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium py-2 px-3 rounded"
+                      >
+                        Copy
+                      </button>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => handleImageUpload(e, slot)}
+                      className="hidden"
+                      id={`upload-${slot}`}
+                    />
+                    <label
+                      htmlFor={`upload-${slot}`}
+                      className="cursor-pointer bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 px-3 rounded text-sm"
+                    >
+                      Ganti
+                    </label>
+                    {currentUrl && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(slot)}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                  {currentUrl && (
+                    <img src={currentUrl} alt={labels[slot]} className="mt-1 h-24 object-contain border rounded" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
           <div className="mt-6 pt-4 border-t">
             <h3 className="text-lg font-semibold mb-2 text-slate-800">
               📦 Pengaturan Satuan & Konversi
@@ -432,6 +675,60 @@ function ProductModal({
                     ))}
                 </select>
               </div>
+
+              {/* Vehicle Compatibility - only for non-Pilok */}
+              {product.kategori !== 'Pilok' && (
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-lg font-semibold mb-2 text-slate-800">Spesifikasi Motor</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="vehicle_kategori_id" className="block mb-1 text-sm font-medium text-slate-700">Kategori Motor</label>
+                      <select id="vehicle_kategori_id" value={product.vehicle_kategori_id || ""} onChange={handleChange} className="w-full p-2 border rounded bg-white">
+                        <option value="">-- Pilih Kategori --</option>
+                        {vehicleKategoris.map(k => <option key={k.id} value={k.id}>{k.icon} {k.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="vehicle_brand_id" className="block mb-1 text-sm font-medium text-slate-700">Merek Motor</label>
+                      <select id="vehicle_brand_id" value={product.vehicle_brand_id || ""} onChange={(e) => { handleChange(e); fetchVehicleModels(e.target.value); }} className="w-full p-2 border rounded bg-white">
+                        <option value="">-- Pilih Merek --</option>
+                        {vehicleBrands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="vehicle_model_id" className="block mb-1 text-sm font-medium text-slate-700">Tipe Motor (Compatible)</label>
+                      <div className="border rounded p-2 max-h-40 overflow-y-auto">
+                        {vehicleModels.length === 0 ? (
+                          <p className="text-sm text-slate-500">Pilih merek terlebih dahulu</p>
+                        ) : (
+                          vehicleModels.map(model => {
+                            const isChecked = (product.selectedVehicleModels || []).includes(model.id);
+                            return (
+                              <label key={model.id} className="flex items-center gap-2 py-1 hover:bg-slate-50 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleVehicleModel(model.id)}
+                                  className="rounded"
+                                />
+                                <span className="text-sm">{model.name}</span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">{(product.selectedVehicleModels || []).length} model dipilih</p>
+                    </div>
+                    <div>
+                      <label htmlFor="vehicle_code_id" className="block mb-1 text-sm font-medium text-slate-700">Kode Motor</label>
+                      <select id="vehicle_code_id" value={product.vehicle_code_id || ""} onChange={handleChange} className="w-full p-2 border rounded bg-white" disabled={!vehicleCodes.length}>
+                        <option value="">-- Pilih Kode --</option>
+                        {vehicleCodes.map(c => <option key={c.id} value={c.id}>{c.code} - {c.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div>
                 <label
                   htmlFor="harga_beli"

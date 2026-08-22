@@ -381,8 +381,10 @@ function Pos() {
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState({ id: null, nama_pelanggan: "Pelanggan Umum" });
   const [productSearch, setProductSearch] = useState("");
+  const [vehicleCodeSearch, setVehicleCodeSearch] = useState("");
   const debouncedProductSearch = useDebounce(productSearch, 300);
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [activeFilters, setActiveFilters] = useState({
     merek: "semua",
     kategori: "semua",
@@ -446,6 +448,7 @@ function Pos() {
       ukuran_filter: activeFilters.ukuran,
       status_filter: "Aktif",
       low_stock_only: false,
+      p_vehicle_code: vehicleCodeSearch || null,
     });
     if (error) {
       console.error("Error fetching products on POS:", error);
@@ -592,6 +595,28 @@ function Pos() {
       ];
     });
   };
+
+  const fetchRecommendedProducts = async (productId) => {
+    if (!productId) return;
+    try {
+      const { data } = await supabase.rpc("get_recommended_products", {
+        p_product_id: productId,
+        p_limit: 4,
+      });
+      setRecommendedProducts(data || []);
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (cart.length > 0) {
+      const lastProduct = cart[cart.length - 1];
+      fetchRecommendedProducts(lastProduct.id);
+    } else {
+      setRecommendedProducts([]);
+    }
+  }, [cart.length]);
   const handleAddProductFromAI = useCallback((product, qty) => {
     const finalQty = qty || 1;
     setCart((curr) => {
@@ -1374,6 +1399,38 @@ function Pos() {
               className="w-full p-2 pl-10 border rounded-lg"
             />
           </div>
+
+          {/* Kode Motor Search */}
+          <div className="relative mb-3">
+            <FiSearch className="absolute top-1/2 left-3 transform -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari kode motor (KVB, Vario, dll)..."
+              value={vehicleCodeSearch}
+              onChange={(e) => setVehicleCodeSearch(e.target.value.toUpperCase())}
+              className="w-full p-2 pl-10 border rounded-lg"
+            />
+          </div>
+
+          {/* Recommended Products */}
+          {recommendedProducts.length > 0 && (
+            <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <h3 className="text-sm font-semibold text-orange-800 mb-2">⚡ Rekomendasi</h3>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {recommendedProducts.map((rp) => (
+                  <div
+                    key={rp.id}
+                    onClick={() => handleAddToCart(rp)}
+                    className="flex-shrink-0 bg-white p-2 rounded-lg shadow border border-orange-100 cursor-pointer hover:border-orange-400 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-slate-800 truncate max-w-[120px]">{rp.nama}</p>
+                    <p className="text-xs text-orange-600 font-semibold">Rp{new Intl.NumberFormat("id-ID").format(rp.harga_jual)}</p>
+                    <p className="text-xs text-slate-500">Stok: {rp.stok}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex-1 bg-white rounded-lg shadow-inner p-4 overflow-y-auto pb-32 md:pb-4">
             {loadingProducts && (

@@ -26,6 +26,7 @@ import {
   FiToggleLeft,
   FiToggleRight,
   FiEdit3,
+  FiNavigation,
 } from "react-icons/fi";
 import { supabase } from "../supabaseClient.js";
 
@@ -110,6 +111,7 @@ function Navbar({ isOpen, onLinkClick }) {
     { name: "Manajemen Merek", path: "/manajemen-merek", icon: <FiToggleRight /> },
     { name: "Manajemen Video", path: "/manajemen-video", icon: <FiPlay /> },
     { name: "Manajemen Feed Post", path: "/manajemen-feed", icon: <FiEdit3 /> },
+    { name: "Manajemen Kendaraan", path: "/manajemen-kendaraan", icon: <FiNavigation /> },
   ];
 
   const handleLogout = async () => {
