@@ -24,6 +24,7 @@ function ProductModal({
     stok: "",
     stok_min: "",
     catatan: "",
+    specifications: "",
     search_synonyms: "",
     status: "Aktif",
     satuan_dasar: "Pcs",
@@ -39,6 +40,11 @@ function ProductModal({
     image_url_2: "",
     image_url_3: "",
     color_swatch_url: "",
+    color_variant: "",
+    sku: "",
+    lini_produk: "",
+    color_hex: "",
+    tags: "",
     vehicle_kategori_id: "",
     vehicle_brand_id: "",
     vehicle_model_id: "",
@@ -90,6 +96,12 @@ function ProductModal({
           image_url_2: productToEdit.image_url_2 || "",
           image_url_3: productToEdit.image_url_3 || "",
           color_swatch_url: productToEdit.color_swatch_url || "",
+          color_variant: productToEdit.color_variant || "",
+          sku: productToEdit.sku || "",
+          lini_produk: productToEdit.lini_produk || "",
+          color_hex: productToEdit.color_hex || "",
+          tags: productToEdit.tags || "",
+          specifications: productToEdit.specifications || "",
           vehicle_kategori_id: productToEdit.vehicle_kategori_id || "",
           vehicle_brand_id: productToEdit.vehicle_brand_id || "",
           vehicle_model_id: productToEdit.vehicle_model_id || "",
@@ -189,6 +201,12 @@ function ProductModal({
       image_url_2: product.image_url_2 || null,
       image_url_3: product.image_url_3 || null,
       color_swatch_url: product.color_swatch_url || null,
+      specifications: product.specifications || null,
+      color_variant: product.color_variant || null,
+      sku: product.sku || null,
+      lini_produk: product.lini_produk || null,
+      color_hex: product.color_hex || null,
+      tags: product.tags || null,
     };
 
     await onSave(finalProduct, hasVehicleCompatibility ? (selectedVehicleModels || []) : [], hasVehicleCompatibility ? {
@@ -227,14 +245,8 @@ function ProductModal({
   const convertToWebP = (file) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-
-      console.log("[WebP] Converting file:", {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-      });
-
       const reader = new FileReader();
+
       reader.onload = (event) => {
         const dataUrl = event.target?.result;
         if (!dataUrl) {
@@ -243,11 +255,6 @@ function ProductModal({
         }
 
         img.onload = () => {
-          console.log("[WebP] Image loaded:", {
-            width: img.width,
-            height: img.height,
-          });
-
           try {
             const canvas = document.createElement("canvas");
             canvas.width = img.width;
@@ -258,40 +265,26 @@ function ProductModal({
             canvas.toBlob(
               (blob) => {
                 if (blob) {
-                  const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
-                  console.log("[WebP] Conversion success:", {
-                    webpType: webpFile.type,
-                    webpSize: webpFile.size,
-                  });
-                  resolve(webpFile);
+                  resolve(
+                    new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" }),
+                  );
                 } else {
-                  reject(new Error("Gagal konversi WebP: canvas.toBlob returned null"));
+                  reject(new Error("Gagal konversi WebP"));
                 }
               },
               "image/webp",
-              0.85
+              0.85,
             );
           } catch (err) {
             reject(new Error("Gagal konversi WebP: " + err.message));
           }
         };
 
-        img.onerror = (e) => {
-          console.error("[WebP] Image load error:", {
-            type: file.type,
-            size: file.size,
-            error: e,
-          });
-          reject(new Error("Gagal memuat gambar. Pastikan file adalah gambar yang valid (JPG/PNG/WebP)."));
-        };
-
+        img.onerror = () => reject(new Error("Gagal memuat gambar"));
         img.src = dataUrl;
       };
 
-      reader.onerror = () => {
-        reject(new Error("Gagal membaca file gambar"));
-      };
-
+      reader.onerror = () => reject(new Error("Gagal membaca file gambar"));
       reader.readAsDataURL(file);
     });
   };
@@ -299,13 +292,6 @@ function ProductModal({
   const handleImageUpload = async (e, slot) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    console.log("[Upload] Starting upload:", {
-      slot,
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
 
     const isPilok = product.kategori === "Pilok";
     if (!isPilok && (!product.kategori || !product.merek)) {
@@ -315,16 +301,10 @@ function ProductModal({
 
     setUploading(true);
     try {
-      console.log("[Upload] Compressing image...");
       const compressedFile = await imageCompression(file, {
         maxSizeMB: 1,
         maxWidthOrHeight: 1920,
         useWebWorker: true,
-      });
-
-      console.log("[Upload] Compression done:", {
-        type: compressedFile.type,
-        size: compressedFile.size,
       });
 
       const webpFile = await convertToWebP(compressedFile);
@@ -341,31 +321,19 @@ function ProductModal({
         filePath = `${kategoriSlug}/${merekSlug}/${productId}-${slot}.webp`;
       }
 
-      console.log("[Upload] Uploading to bucket:", {
-        bucket,
-        filePath,
-        webpType: webpFile.type,
-        webpSize: webpFile.size,
-      });
-
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, webpFile, { upsert: true, contentType: "image/webp" });
 
-      if (uploadError) {
-        console.error("[Upload] Upload error:", uploadError);
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(filePath);
 
-      console.log("[Upload] Success:", publicUrl);
-
       setProduct((prev) => ({ ...prev, [slot]: publicUrl }));
     } catch (error) {
-      console.error("[Upload] Full error:", error);
+      console.error("Error upload gambar:", error);
       alert(`Gagal upload gambar: ${error.message}`);
     } finally {
       setUploading(false);
@@ -1040,8 +1008,113 @@ function ProductModal({
                   onChange={handleChange}
                   rows="3"
                   className="w-full p-2 border rounded"
-                ></textarea>
+                 ></textarea>
               </div>
+
+              {/* specifications */}
+              <div className="md:col-span-2">
+                <label htmlFor="specifications" className="block mb-1 text-sm font-medium text-slate-700">
+                  Spesifikasi (Text)
+                </label>
+                <textarea
+                  id="specifications"
+                  value={product.specifications || ""}
+                  onChange={handleChange}
+                  rows="4"
+                  className="w-full p-2 border rounded"
+                  placeholder="Masukkan spesifikasi produk. Bisa multiple paragraf dengan enter."
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Gunakan enter untuk baris baru. Tampil di halaman detail produk tab Spesifikasi.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="color_variant" className="block mb-1 text-sm font-medium text-slate-700">
+                  Varian Warna
+                </label>
+                <input
+                  id="color_variant"
+                  type="text"
+                  value={product.color_variant || ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  placeholder="Cth: Red, Blue, Silver"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="sku" className="block mb-1 text-sm font-medium text-slate-700">
+                  SKU (Stock Keeping Unit)
+                </label>
+                <input
+                  id="sku"
+                  type="text"
+                  value={product.sku || ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  placeholder="Cth: PIL-300ML-BLU"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="lini_produk" className="block mb-1 text-sm font-medium text-slate-700">
+                  Lini Produk
+                </label>
+                <input
+                  id="lini_produk"
+                  type="text"
+                  value={product.lini_produk || ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  placeholder="Cth: Premium, Ekonomi, Pro"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="color_hex" className="block mb-1 text-sm font-medium text-slate-700">
+                  Warna (HEX Code)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="color_hex"
+                    type="text"
+                    value={product.color_hex || ""}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded"
+                    placeholder="#FF5733"
+                    maxLength={7}
+                  />
+                  {product.color_hex && (
+                    <div
+                      className="w-10 h-10 rounded border"
+                      style={{ backgroundColor: product.color_hex }}
+                      title={product.color_hex}
+                    />
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Format: #RRGGBB. Akan muncul sebagai color swatch di UI.
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="tags" className="block mb-1 text-sm font-medium text-slate-700">
+                  Tags
+                </label>
+                <input
+                  id="tags"
+                  type="text"
+                  value={product.tags || ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  placeholder="Cth: bestseller, baru, limited"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Pisahkan dengan koma. Tags membantu pencarian dan filter.
+                </p>
+              </div>
+
               <div className="md:col-span-2">
                 <label
                   htmlFor="search_synonyms"
