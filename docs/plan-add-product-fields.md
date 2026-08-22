@@ -245,11 +245,23 @@ Opsional: tampilkan color swatch di halaman detail jika `color_hex` terisi.
 
 ## 4. Execution Order
 
-1. **Migration SQL:** `ALTER TABLE specifications` ke TEXT
-2. **POS - ProductModal.jsx:** Tambah state + input fields
-3. **POS - handleSubmit:** Include field baru
-4. **STORE - ProductInfoTabs.jsx:** Update tab spesifikasi
-5. **Test:** Build + verify form
+1. ~~**Migration SQL:** `ALTER TABLE specifications` ke TEXT~~ — **DITunda** sampai review
+2. ~~**POS - ProductModal.jsx:** Tambah state + input fields~~ — **SELESAI** (commit `5622ec6`)
+3. **POS - handleSubmit:** Include field baru — **SELESAI** (commit `5622ec6`)
+4. **STORE - ProductInfoTabs.jsx:** Update tab spesifikasi — **Menunggu**
+5. **Test:** Build + verify form — **Menunggu**
+
+### Status
+- **POS:** Field baru sudah ditambahkan ke `ProductModal.jsx`:
+  - `specifications` (textarea)
+  - `color_variant` (input text)
+  - `sku` (input text)
+  - `lini_produk` (input text)
+  - `color_hex` (input text + color preview)
+  - `tags` (input text)
+- **Debug logs:** Sudah dihapus setelah upload berfungsi
+- **STORE:** Belum dikerjakan
+- **Database migration `ALTER specifications`:** Belum dijalankan, menunggu review
 
 ---
 
@@ -330,49 +342,14 @@ Error terjadi di fungsi `convertToWebP` pada event `img.onerror`, yang artinya b
 - File type tidak didukung browser (`imageCompression` mengembalikan blob dengan type yang tidak dikenali `Image`)
 - File terlalu besar meskipun sudah di-compress
 
-### 7.2 Debugging Logs Added
-**File:** `src/components/ProductModal.jsx`
-
-Tambahkan `console.log` di setiap tahap upload:
-```js
-console.log("[Upload] Starting upload:", { slot, name, type, size });
-console.log("[Upload] Compression done:", { type, size });
-console.log("[WebP] Converting file:", { name, type, size, objectUrl });
-console.log("[WebP] Image loaded:", { width, height });
-console.log("[WebP] Conversion success:", { webpType, webpSize });
-console.log("[Upload] Uploading to bucket:", { bucket, filePath, webpType, webpSize });
-console.log("[Upload] Success:", publicUrl);
-console.error("[Upload] Full error:", error);
-```
-
-Tambahkan `URL.revokeObjectURL(objectUrl)` untuk menghindari memory leak.
-
-### 7.3 Fix
-Perbaikan yang dilakukan:
-1. **Object URL cleanup:** Tambah `URL.revokeObjectURL(objectUrl)` di `onload`, `onerror`, dan `catch`
-2. **Better error message:** `img.onerror` sekarang memberikan pesan yang lebih informatif: `"Gagal memuat gambar. Pastikan file adalah gambar yang valid (JPG/PNG/WebP)."`
-3. **Try-catch di onload:** Tangani error di dalam `img.onload` dengan `try-catch` dan `URL.revokeObjectURL`
-4. **Log detail:** Tambah logging untuk file type, size, dan conversion status
-
-### 7.4 Verification
-Setelah debugging logs ditambahkan:
-1. Buka edit produk di POS
-2. Upload color swatch
-3. Cek console log untuk detail error
-4. Identifikasi apakah masalah di:
-   - `imageCompression` output (file type/size)
-   - `Image` loading (format tidak didukung)
-   - `canvas.toBlob` (konversi WebP gagal)
-   - `supabase.storage.upload` (RLS/policy issue)
-
-### 7.5 Fix Applied
+### 7.2 Fix Applied
 **Root cause:** `imageCompression()` mengembalikan blob dengan MIME `image/jpeg`. Setelah itu `img.src = URL.createObjectURL(file)` dari hasil kompresi tersebut gagal di `onerror`. Ini adalah masalah umum dengan `createObjectURL()` pada hasil kompresi di beberapa browser/konteks, bukan file yang corrupt.
 
 **Perbaikan yang diterapkan:**
 1. Ganti `URL.createObjectURL()` dengan `FileReader.readAsDataURL()` sebelum memuat ke `Image`
 2. Tambah `contentType: "image/webp"` ke `supabase.storage.upload()`
-3. Hapus `URL.revokeObjectURL()` karena sudah tidak dipakai
-4. Tambah `reader.onerror` handler
+3. Tambah `reader.onerror` handler
+4. Hapus `URL.revokeObjectURL()` karena sudah tidak dipakai
 
 **Code change:**
 ```js
@@ -391,10 +368,14 @@ reader.readAsDataURL(file);
 
 **Commit:** `5a0c30b` — `fix: use FileReader for WebP conversion and add contentType to upload`
 
-### 7.6 Verification
-Setelah fix diterapkan:
-1. Test upload color swatch di POS
-2. Cek console log — seharusnya tidak ada error lagi
-3. Verifikasi file terupload di bucket `produk-pilok` dengan MIME type `image/webp`
+### 7.3 Debug Logs Removed
+Debug logs telah ditambahkan untuk identifikasi masalah, dan kemudian **dihapus** setelah upload berfungsi dengan benar (commit `5622ec6`).
+
+### 7.4 Current Status
+Upload gambar sudah berfungsi dengan normal:
+- Color swatch upload berhasil
+- Tidak ada error di console
+- File terupload ke bucket yang sesuai (`produk-pilok` untuk Pilok, `produk-parts` untuk non-Pilok)
+- Debug logs sudah dihapus dari codebase
 
 
