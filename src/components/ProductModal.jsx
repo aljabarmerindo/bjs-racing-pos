@@ -737,8 +737,7 @@ function ProductModal({
                     </label>
                   </div>
                   
-                  {hasVehicleCompatibility && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div style={{ display: hasVehicleCompatibility ? 'block' : 'none' }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="vehicle_kategori_id" className="block mb-1 text-sm font-medium text-slate-700">Kategori Motor</label>
                       <select id="vehicle_kategori_id" value={product.vehicle_kategori_id || ""} onChange={handleChange} className="w-full p-2 border rounded bg-white">
