@@ -245,11 +245,11 @@ Opsional: tampilkan color swatch di halaman detail jika `color_hex` terisi.
 
 ## 4. Execution Order
 
-1. ~~**Migration SQL:** `ALTER TABLE specifications` ke TEXT~~ — **DITunda** sampai review
+1. ~~**Migration SQL:** `ALTER TABLE specifications` ke TEXT~~ — **SELESAI** (dilakukan via Supabase Management API)
 2. ~~**POS - ProductModal.jsx:** Tambah state + input fields~~ — **SELESAI** (commit `5622ec6`)
-3. **POS - handleSubmit:** Include field baru — **SELESAI** (commit `5622ec6`)
-4. **STORE - ProductInfoTabs.jsx:** Update tab spesifikasi — **Menunggu**
-5. **Test:** Build + verify form — **Menunggu**
+3. ~~**POS - handleSubmit:** Include field baru~~ — **SELESAI** (commit `5622ec6`)
+4. ~~**STORE - ProductInfoTabs.jsx:** Update tab spesifikasi~~ — **SELESAI** (commit `4577f06`)
+5. **Test:** Build + verify form — **Menunggu** (ada pre-existing build error di STORE di file `[order_id].astro`)
 
 ### Status
 - **POS:** Field baru sudah ditambahkan ke `ProductModal.jsx`:
@@ -259,9 +259,10 @@ Opsional: tampilkan color swatch di halaman detail jika `color_hex` terisi.
   - `lini_produk` (input text)
   - `color_hex` (input text + color preview)
   - `tags` (input text)
+- **STORE:** `ProductInfoTabs.jsx` sudah diupdate untuk menampilkan `specifications` sebagai plain text
+- **Database migration:** `specifications` sudah di-alter dari JSONB ke TEXT
 - **Debug logs:** Sudah dihapus setelah upload berfungsi
-- **STORE:** Belum dikerjakan
-- **Database migration `ALTER specifications`:** Belum dijalankan, menunggu review
+- **Upload fix:** Sudah diterapkan dan di-commit
 
 ---
 
