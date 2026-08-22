@@ -257,16 +257,26 @@ function ProductModal({
       const webpFile = await convertToWebP(compressedFile);
 
       const productId = productToEdit?.id || Date.now();
-      const filePath = `produk-pilok/public/${productId}-${slot}.webp`;
+      const isPilok = product.kategori === "Pilok";
+      const bucket = isPilok ? "produk-pilok" : "produk-parts";
+
+      let filePath;
+      if (isPilok) {
+        filePath = `public/${productId}-${slot}.webp`;
+      } else {
+        const kategoriSlug = slugify(product.kategori || "lainnya");
+        const merekSlug = slugify(product.merek || "umum");
+        filePath = `${kategoriSlug}/${merekSlug}/${productId}-${slot}.webp`;
+      }
 
       const { error: uploadError } = await supabase.storage
-        .from("produk-pilok")
+        .from(bucket)
         .upload(filePath, webpFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from("produk-pilok")
+        .from(bucket)
         .getPublicUrl(filePath);
 
       setProduct((prev) => ({ ...prev, [slot]: publicUrl }));
@@ -276,6 +286,15 @@ function ProductModal({
     } finally {
       setUploading(false);
     }
+  };
+
+  const slugify = (text) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
   };
 
   const handleRemoveImage = (slot) => {
