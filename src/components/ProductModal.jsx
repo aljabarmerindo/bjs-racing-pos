@@ -227,62 +227,72 @@ function ProductModal({
   const convertToWebP = (file) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
 
       console.log("[WebP] Converting file:", {
         name: file.name,
         type: file.type,
         size: file.size,
-        objectUrl,
       });
 
-      img.onload = () => {
-        console.log("[WebP] Image loaded:", {
-          width: img.width,
-          height: img.height,
-        });
-        URL.revokeObjectURL(objectUrl);
-
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0);
-
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
-                console.log("[WebP] Conversion success:", {
-                  webpType: webpFile.type,
-                  webpSize: webpFile.size,
-                });
-                resolve(webpFile);
-              } else {
-                reject(new Error("Gagal konversi WebP: canvas.toBlob returned null"));
-              }
-            },
-            "image/webp",
-            0.85
-          );
-        } catch (err) {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error("Gagal konversi WebP: " + err.message));
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result;
+        if (!dataUrl) {
+          reject(new Error("Gagal membaca file gambar"));
+          return;
         }
+
+        img.onload = () => {
+          console.log("[WebP] Image loaded:", {
+            width: img.width,
+            height: img.height,
+          });
+
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
+                  console.log("[WebP] Conversion success:", {
+                    webpType: webpFile.type,
+                    webpSize: webpFile.size,
+                  });
+                  resolve(webpFile);
+                } else {
+                  reject(new Error("Gagal konversi WebP: canvas.toBlob returned null"));
+                }
+              },
+              "image/webp",
+              0.85
+            );
+          } catch (err) {
+            reject(new Error("Gagal konversi WebP: " + err.message));
+          }
+        };
+
+        img.onerror = (e) => {
+          console.error("[WebP] Image load error:", {
+            type: file.type,
+            size: file.size,
+            error: e,
+          });
+          reject(new Error("Gagal memuat gambar. Pastikan file adalah gambar yang valid (JPG/PNG/WebP)."));
+        };
+
+        img.src = dataUrl;
       };
 
-      img.onerror = (e) => {
-        URL.revokeObjectURL(objectUrl);
-        console.error("[WebP] Image load error:", {
-          type: file.type,
-          size: file.size,
-          error: e,
-        });
-        reject(new Error("Gagal memuat gambar. Pastikan file adalah gambar yang valid (JPG/PNG/WebP)."));
+      reader.onerror = () => {
+        reject(new Error("Gagal membaca file gambar"));
       };
 
-      img.src = objectUrl;
+      reader.readAsDataURL(file);
     });
   };
 
@@ -340,7 +350,7 @@ function ProductModal({
 
       const { error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(filePath, webpFile, { upsert: true });
+        .upload(filePath, webpFile, { upsert: true, contentType: "image/webp" });
 
       if (uploadError) {
         console.error("[Upload] Upload error:", uploadError);
