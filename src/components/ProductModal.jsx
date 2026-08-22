@@ -246,6 +246,12 @@ function ProductModal({
     const file = e.target.files[0];
     if (!file) return;
 
+    const isPilok = product.kategori === "Pilok";
+    if (!isPilok && (!product.kategori || !product.merek)) {
+      alert("Isi Kategori dan Merek terlebih dahulu sebelum upload gambar untuk produk non-Pilok.");
+      return;
+    }
+
     setUploading(true);
     try {
       const compressedFile = await imageCompression(file, {
@@ -257,7 +263,6 @@ function ProductModal({
       const webpFile = await convertToWebP(compressedFile);
 
       const productId = productToEdit?.id || Date.now();
-      const isPilok = product.kategori === "Pilok";
       const bucket = isPilok ? "produk-pilok" : "produk-parts";
 
       let filePath;
