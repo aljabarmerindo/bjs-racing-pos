@@ -170,7 +170,7 @@ function ProductModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const finalProduct = {
+    const { selectedVehicleModels, ...finalProduct } = {
       ...product,
       harga_beli: Number(product.harga_beli) || 0,
       harga_jual: Number(product.harga_jual) || 0,
@@ -195,7 +195,7 @@ function ProductModal({
       vehicle_code_id: hasVehicleCompatibility && product.vehicle_code_id ? Number(product.vehicle_code_id) : null,
     };
 
-    await onSave(finalProduct, hasVehicleCompatibility ? (product.selectedVehicleModels || []) : []);
+    await onSave(finalProduct, hasVehicleCompatibility ? (selectedVehicleModels || []) : []);
   };
 
   const applyDiscountPreset = (pct) => {
