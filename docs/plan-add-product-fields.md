@@ -365,10 +365,36 @@ Setelah debugging logs ditambahkan:
    - `canvas.toBlob` (konversi WebP gagal)
    - `supabase.storage.upload` (RLS/policy issue)
 
-### 7.5 Possible Solutions Berdasarkan Hasil Debug
-- Jika error di `imageCompression`: coba turunkan `maxSizeMB` atau `maxWidthOrHeight`
-- Jika error di `img.onerror`: file mungkin bukan gambar valid, tambahkan validasi file type sebelum upload
-- Jika error di `canvas.toBlob`: browser tidak support WebP encoding, fallback ke PNG/JPG
-- Jika error di `supabase.storage.upload`:cek RLS policies bucket
+### 7.5 Fix Applied
+**Root cause:** `imageCompression()` mengembalikan blob dengan MIME `image/jpeg`. Setelah itu `img.src = URL.createObjectURL(file)` dari hasil kompresi tersebut gagal di `onerror`. Ini adalah masalah umum dengan `createObjectURL()` pada hasil kompresi di beberapa browser/konteks, bukan file yang corrupt.
+
+**Perbaikan yang diterapkan:**
+1. Ganti `URL.createObjectURL()` dengan `FileReader.readAsDataURL()` sebelum memuat ke `Image`
+2. Tambah `contentType: "image/webp"` ke `supabase.storage.upload()`
+3. Hapus `URL.revokeObjectURL()` karena sudah tidak dipakai
+4. Tambah `reader.onerror` handler
+
+**Code change:**
+```js
+// Sebelum
+const objectUrl = URL.createObjectURL(file);
+img.src = objectUrl;
+
+// Sesudah
+const reader = new FileReader();
+reader.onload = (event) => {
+  const dataUrl = event.target?.result;
+  img.src = dataUrl;
+};
+reader.readAsDataURL(file);
+```
+
+**Commit:** `5a0c30b` — `fix: use FileReader for WebP conversion and add contentType to upload`
+
+### 7.6 Verification
+Setelah fix diterapkan:
+1. Test upload color swatch di POS
+2. Cek console log — seharusnya tidak ada error lagi
+3. Verifikasi file terupload di bucket `produk-pilok` dengan MIME type `image/webp`
 
 
