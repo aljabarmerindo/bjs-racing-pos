@@ -1,3 +1,4 @@
+// BJS Racing POS - v2026.08.22.1
 // src/App.jsx
 import { useState, useEffect } from "react";
 import { Routes, Route, Outlet, Navigate } from "react-router-dom"; // Tambahkan Navigate
